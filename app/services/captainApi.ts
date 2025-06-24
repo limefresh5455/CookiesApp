@@ -17,7 +17,7 @@ interface DomainData {
 export async function checkDomainExists(userId: string, domain: string): Promise<DomainCheckResponse> {
   try {
     const response = await fetch(
-      `${import.meta.env.VITE_API_URL}/dns/exists?userId=${userId}&domain=${encodeURIComponent(domain)}`
+      `${import.meta.env.VITE_API_URL}dns/exists?userId=${userId}&domain=${encodeURIComponent(domain)}`
     );
 
     if (!response.ok) {
@@ -43,7 +43,7 @@ export async function checkDomainExists(userId: string, domain: string): Promise
 export async function createVerifiedDomain(data: DomainData): Promise<CreateDomainResponse> {
   try {
     const response = await fetch(
-      `${import.meta.env.VITE_API_URL}/dns/create-verified-domain`,
+      `${import.meta.env.VITE_API_URL}dns/create-verified-domain`,
       {
         method: "POST",
         headers: {

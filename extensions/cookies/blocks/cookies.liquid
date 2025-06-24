@@ -1,11 +1,11 @@
 
+{% assign shop_handle = shop.domain | remove: '.myshopify.com' %}
+{% assign filename = shop_handle | append: '-script.js' %}
+<script src="{{ filename | asset_url }}"></script>
 
 {% schema %}
 {
   "name": "App Embed Script",
-  "target": "body",
-  "stylesheet": "app.css",
-  "javascript": "app.js",
-  "enabled_on_install": false
+  "target": "body"
 }
 {% endschema %}

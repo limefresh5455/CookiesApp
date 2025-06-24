@@ -65,7 +65,15 @@ export const action = async (args: ActionFunctionArgs) => {
 
     const exists = checkData.exists;
 
-    if (exists) {
+    const existingUser = await db.captain.findUnique({
+      where: {
+        userId: userIdString,
+      },
+    });
+
+    console.log("existingUser", existingUser)
+
+    if (exists && existingUser) {
       const url = new URL(request.url);
       const redirectUrl = `${url.origin}${url.pathname}?shop=${encodeURIComponent(domain)}`;
       return redirect(redirectUrl);

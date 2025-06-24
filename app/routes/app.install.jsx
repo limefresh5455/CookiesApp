@@ -10,17 +10,23 @@ import { TitleBar } from "@shopify/app-bridge-react";
 import { Form, useNavigation } from "@remix-run/react";
 import path from "path";
 import { writeFile } from "fs/promises";
+import db from "../db.server";
 
 
 
-export const action = async ({ request }) => {
-  const url = new URL(request.url);
+export const action = async (args) => {
+  const url = new URL(args.request.url);
   const shop = url.searchParams.get("shop");
 
-
-
+  
+  const existingUser = await db.captain.findFirst({
+      where: {
+        domain: shop,
+      },
+    });
+  
   // Fetch the script from the external API
-  const accessToken = "abcd"
+  const accessToken = existingUser.accessToken
   const storeSlug = shop.replace(".myshopify.com", "");
 
   const response = await fetch("https://api-dev.cptn.co/banner/script?accessToken="+accessToken, {
@@ -46,7 +52,6 @@ export const action = async ({ request }) => {
     return new Response("Failed to write script file", { status: 500 });
   }
 
-  return(data);
 };
 
 
