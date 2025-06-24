@@ -13,10 +13,14 @@ export const loader: LoaderFunction = (args) => rootAuthLoader(args);
 export function App() {
 
   return (
-   
-
-          <SignUp path='/sign-up' signInUrl='/sign-in' routing="path" />
-
+    <div style={{
+      display: 'flex',
+      justifyContent: 'center',
+      alignItems: 'center',
+      height: '100vh',
+    }}>
+      <SignUp path='/sign-up' signInUrl='/sign-in' routing="path" />
+    </div>
   );
 }
 

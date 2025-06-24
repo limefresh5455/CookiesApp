@@ -31,14 +31,13 @@ import {
   PageIcon,            // Confirmed from your list for 'Pages'
 } from '@shopify/polaris-icons';
 
-// --- END ICON IMPORTS ---
-
 export const loader = async ({ request }: LoaderFunctionArgs) => {
   await authenticate.admin(request);
   return {};
 };
 
 export default function DashboardPage() {
+
   useLoaderData();
 
   // Mock data for the dashboard (replace with actual data fetching logic)
@@ -112,6 +111,7 @@ export default function DashboardPage() {
                     </BlockStack>
                   </Card>
                 </Grid.Cell>
+
 
                 {/* Partially Allowed Card */}
                 <Grid.Cell columnSpan={{ xs: 6, sm: 3, md: 3, lg: 3, xl: 3 }}>

@@ -24,3 +24,13 @@ model Session {
   collaborator  Boolean?  @default(false)
   emailVerified Boolean?  @default(false)
 }
+
+model Captain {
+  id          Int      @id @default(autoincrement())
+  userId      String   @unique 
+  domain      String
+  email       String
+  accessToken String
+  scannerId   String
+  createDate  DateTime?
+}

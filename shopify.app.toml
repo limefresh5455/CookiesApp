@@ -3,7 +3,7 @@
 client_id = "5a05dd878a10a03fa32cdc622d405090"
 name = "Cookies App"
 handle = "cookiesapp2"
-application_url = "https://corners-knowledgestorm-john-oriented.trycloudflare.com"
+application_url = "https://architectural-ya-possibilities-transmit.trycloudflare.com"
 embedded = true
 
 [build]
@@ -26,7 +26,7 @@ api_version = "2025-04"
 scopes = "write_products, read_content, read_customers,read_orders"
 
 [auth]
-redirect_urls = ["https://corners-knowledgestorm-john-oriented.trycloudflare.com/auth/callback", "https://corners-knowledgestorm-john-oriented.trycloudflare.com/auth/shopify/callback", "https://corners-knowledgestorm-john-oriented.trycloudflare.com/api/auth/callback"]
+redirect_urls = ["https://architectural-ya-possibilities-transmit.trycloudflare.com/auth/callback", "https://architectural-ya-possibilities-transmit.trycloudflare.com/auth/shopify/callback", "https://architectural-ya-possibilities-transmit.trycloudflare.com/api/auth/callback"]
 
 [pos]
 embedded = false

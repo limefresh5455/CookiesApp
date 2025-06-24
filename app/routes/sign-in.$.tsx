@@ -14,10 +14,14 @@ export function App() {
   const { showForm } = useLoaderData<typeof loader>();
 
   return (
-
-
+      <div style={{
+        display: 'flex',
+        justifyContent: 'center',
+        alignItems: 'center',
+        height: '100vh',
+      }}>
       <SignIn path='/sign-in' signUpUrl='/sign-up' routing="path" />
-
+      </div>
   );
 }
 
