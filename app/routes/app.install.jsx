@@ -7,15 +7,52 @@ import {
   Button,
 } from "@shopify/polaris";
 import { TitleBar } from "@shopify/app-bridge-react";
-import { useState } from "react";
+import { Form, useNavigation } from "@remix-run/react";
+import path from "path";
+import { writeFile } from "fs/promises";
+
+
+
+export const action = async ({ request }) => {
+  const url = new URL(request.url);
+  const shop = url.searchParams.get("shop");
+
+
+
+  // Fetch the script from the external API
+  const accessToken = "abcd"
+  const storeSlug = shop.replace(".myshopify.com", "");
+
+  const response = await fetch("https://api-dev.cptn.co/banner/script?accessToken="+accessToken, {
+    method: "GET",
+    headers: {
+      accept: "application/json",
+    },
+  });
+
+  if (!response.ok) {
+    throw new Response("Failed to fetch script", { status: 500 });
+  }
+
+  const data = await response.text();
+  const filePath = path.resolve(`extensions/cookies/assets/${storeSlug}-script.js`);
+
+  try {
+    await writeFile(filePath, data, "utf8");
+    console.log("✅ Script saved to extension folder:", filePath);
+    return new Response("Script saved successfully", { status: 200 });
+  } catch (err) {
+    console.error("❌ Failed to write file:", err);
+    return new Response("Failed to write script file", { status: 500 });
+  }
+
+  return(data);
+};
+
 
 export default function InstallPage() {
-  const [embedEnabled, setEmbedEnabled] = useState(false);
-
-  const toggleEmbed = () => {
-    // TODO: Connect this to backend logic or metafield toggle
-    setEmbedEnabled((prev) => !prev);
-  };
+  const navigation = useNavigation();
+  const loading = navigation.state === "submitting";
 
   return (
     <Page>
@@ -29,19 +66,31 @@ export default function InstallPage() {
               </Text>
 
               <Text as="p" variant="bodyMd">
-                This embed injects your storefront script file: <strong><code>app.js</code></strong>. 
-                You can enable or disable it below.
+                This embed injects your storefront script file:{" "}
+                <strong>
+                  <code>app.js</code>
+                </strong>
+                . You can enable or disable it below.
               </Text>
 
               <div style={{ maxWidth: "200px" }}>
-                <Button 
-                  onClick={toggleEmbed} 
-                  variant={embedEnabled ? "secondary" : "primary"} 
-                  fullWidth
-                  size="slim"
-                >
-                  {embedEnabled ? "Disable App Embed" : "Enable App Embed"}
-                </Button>
+                {/* Toggle embed logic */}
+                
+              </div>
+
+              <div style={{ maxWidth: "200px" }}>
+                {/* Generate script via action */}
+                <Form method="post">
+                  <Button
+                    submit
+                    variant="primary"
+                    fullWidth
+                    size="slim"
+                    loading={loading}
+                  >
+                    Generate Script
+                  </Button>
+                </Form>
               </div>
             </BlockStack>
           </Card>
