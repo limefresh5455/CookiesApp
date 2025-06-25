@@ -70,7 +70,7 @@
 
   // scripts/templates/services.js
   async function loadBannerData() {
-    const paramToken = "09e15868-7570-4d25-a787-e60d5d9d8003";
+    const paramToken = "b8fc5760-687c-43ff-a107-7e504cb92430";
     const accessToken = paramToken || document.currentScript.getAttribute("access-token");
     const response = await fetch(
       `${CC_SERVER_URL}/banner/banner-token?access-token=${accessToken}`
