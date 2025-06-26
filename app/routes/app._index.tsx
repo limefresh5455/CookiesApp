@@ -16,24 +16,109 @@ import { useLoaderData } from "@remix-run/react";
 import type { LoaderFunctionArgs } from "@remix-run/node";
 import { authenticate } from "../shopify.server";
 
-// --- ICON IMPORTS ---
-// All these icons are directly from the list you provided,
-// ensuring they are correctly exported from '@shopify/polaris-icons'.
+
 import {
-  AppsIcon,            // Confirmed from your list for Banners
-  CalendarIcon,        // Confirmed from your list for the calendar button
-  CheckCircleIcon,     // Confirmed from your list for the 'Allowed' tick icon
-  MinusCircleIcon,     // Confirmed from your list for 'Partially Allowed' minus icon
-  XCircleIcon,         // Confirmed from your list for 'Rejected' cancel icon
-  QuestionCircleIcon,  // Confirmed from your list for 'No Activity' question mark
-  LinkIcon,            // Confirmed from your list for 'Domains'
-  NoteIcon,            // Confirmed from your list for 'Reports'
-  PageIcon,            // Confirmed from your list for 'Pages'
+  AppsIcon,            
+  CalendarIcon,        
+  CheckCircleIcon,     
+  MinusCircleIcon,     
+  XCircleIcon,         
+  QuestionCircleIcon, 
+  LinkIcon,            
+  NoteIcon,            
+  PageIcon,            
 } from '@shopify/polaris-icons';
+import db from "../db.server";
+import { getClerkId, createVerifiedDomain } from "../services/captainApi";
 
 export const loader = async ({ request }: LoaderFunctionArgs) => {
-  await authenticate.admin(request);
-  return {};
+  const { session } = await authenticate.admin(request);
+  const shop = session.shop;
+  const shopID = session.id;
+
+  const existingEmail:any = await db.session.findFirst({
+    where: { id: shopID },
+  });
+ 
+  if (existingEmail.email == null) {
+    const accessToken = session.accessToken;
+    const response = await fetch(`https://${shop}/admin/api/2024-01/graphql.json`, {
+      method: "POST",
+      headers: {
+        "X-Shopify-Access-Token": accessToken,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        query: `
+          query {
+            shop {
+              email
+            }
+          }
+        `,
+      }),
+    });
+
+    if (!response.ok) {
+      console.error("Shopify email fetch failed");
+      return new Response("Failed to get store email", { status: 500 });
+    }
+
+    const result = await response.json();
+
+    const email = result?.data?.shop?.email;
+    const name = result?.data?.shop?.shopOwnerName;
+
+    if (!email) {
+      return new Response("Email not found", { status: 400 });
+    }
+    // 🔹 2. Update in your custom `Captain` session table
+    await db.session.update({
+      where: { id: shopID }, // make sure this is unique or indexed
+      data: {
+        email: email,
+        firstName: name,
+      },
+    });
+  }else{
+    const existingCaptian:any = await db.captain.findFirst({
+      where: { domain: shop },
+    });
+
+
+    if(!existingCaptian){
+      const userData = await getClerkId(existingEmail.email);
+      console.log(userData);
+
+      const createData = await createVerifiedDomain({
+        domain: shop,
+        userId: userData.clerkId,
+        verified: true,
+      });
+
+      await db.captain.upsert({
+        where: {
+          userId: userData.clerkId,
+        },
+        update: {
+          domain: shop,
+          email:  String(existingEmail.email ?? "").trim(), 
+          accessToken: String(createData.bannerToken ?? "").trim(),
+          scannerId: String(createData.scannerId ?? "").trim(),
+          createDate: new Date(),
+        },
+        create: {
+          userId: userData.clerkId,
+          domain: shop,
+          email:  String(existingEmail.email ?? "").trim(), 
+          accessToken: String(createData.bannerToken ?? "").trim(),
+          scannerId: String(createData.scannerId ?? "").trim(),
+          createDate: new Date(),
+        },
+      });
+    }
+  }
+  return new Response("Email updated successfully");
 };
 
 export default function DashboardPage() {

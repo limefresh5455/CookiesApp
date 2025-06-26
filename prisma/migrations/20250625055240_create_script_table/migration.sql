@@ -7,6 +7,8 @@ CREATE TABLE "Captain" (
     "accessToken" TEXT NOT NULL,
     "scannerId" TEXT NOT NULL,
     "createDate" TIMESTAMP(3),
+    "scriptName" TEXT NOT NULL,
+    "scriptLink" TEXT NOT NULL,
 
     CONSTRAINT "Captain_pkey" PRIMARY KEY ("id")
 );

@@ -70,7 +70,7 @@ export const action = async (args: ActionFunctionArgs) => {
         userId: userIdString,
       },
     });
-
+    
     console.log("existingUser", existingUser)
 
     if (exists && existingUser) {
@@ -84,12 +84,13 @@ export const action = async (args: ActionFunctionArgs) => {
         verified: true,
       });
 
+      console.log("object", userIdString)
+
       await db.captain.upsert({
         where: {
-          userId: userIdString,
+          domain: domain,
         },
         update: {
-          domain,
           email:  String(email ?? "").trim(), 
           accessToken: String(createData.bannerToken ?? "").trim(),
           scannerId: String(createData.scannerId ?? "").trim(),

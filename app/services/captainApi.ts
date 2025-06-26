@@ -1,3 +1,5 @@
+import { json } from "@remix-run/node"; // ✅ add this
+
 interface DomainCheckResponse {
   exists: boolean;
 }
@@ -14,10 +16,77 @@ interface DomainData {
   verified?: boolean;
 }
 
+export const getClerkId = async (email: string) => {
+  const phone = "+91 1234567884"; // optional: you can pass this dynamically too
+
+  if (!email || !phone) {
+    return { error: "Email and phone are required" };
+  }
+
+  const headers = {
+    accept: "application/json",
+    "Content-Type": "application/json",
+    Authorization: "Bearer sk_test_0WRJUtOd3xWECBqQwyeHoSeNEvVKd5bd2QqK24Ifxz",
+  };
+
+  try {
+    // STEP 1: Try to get existing Clerk user by email
+    const getResponse = await fetch(
+      `https://api.clerk.com/v1/users?email_address=${encodeURIComponent(email)}`,
+      {
+        method: "GET",
+        headers: {
+          accept: "application/json",
+          Authorization: headers.Authorization,
+        },
+      }
+    );
+
+    const existingUsers = await getResponse.json();
+
+    if (Array.isArray(existingUsers) && existingUsers.length > 0) {
+      const user = existingUsers[0];
+      console.log("✅ Clerk user already exists:", user.id);
+      return { clerkId: user.id, alreadyExists: true };
+    }
+
+    // STEP 2: If not found, create new Clerk user
+    const createResponse = await fetch("https://api.clerk.com/v1/users", {
+      method: "POST",
+      headers,
+      body: JSON.stringify({
+        email_address: [email],
+        phone_number: [phone],
+        skip_password_checks: true,
+        skip_password_requirement: true,
+      }),
+    });
+
+    if (!createResponse.ok) {
+      const errorText = await createResponse.text();
+      console.error("❌ Clerk API error:", errorText);
+      return { error: "Failed to create Clerk user" };
+    }
+
+    const createdUser = await createResponse.json();
+    console.log("🆕 Clerk user created:", createdUser.id);
+    return {
+      clerkId: createdUser.id,
+      alreadyExists: false,
+    };
+  } catch (err) {
+    console.error("❌ Clerk fetch failed:", err);
+    return { error: "Network error or Clerk unreachable" };
+  }
+};
+
+
+
+
 export async function checkDomainExists(userId: string, domain: string): Promise<DomainCheckResponse> {
   try {
     const response = await fetch(
-      `${import.meta.env.VITE_API_URL}dns/exists?userId=${userId}&domain=${encodeURIComponent(domain)}`
+      `${import.meta.env.VITE_API_URL}/dns/exists?userId=${userId}&domain=${encodeURIComponent(domain)}`
     );
 
     if (!response.ok) {
@@ -43,7 +112,7 @@ export async function checkDomainExists(userId: string, domain: string): Promise
 export async function createVerifiedDomain(data: DomainData): Promise<CreateDomainResponse> {
   try {
     const response = await fetch(
-      `${import.meta.env.VITE_API_URL}dns/create-verified-domain`,
+      `${import.meta.env.VITE_API_URL}/dns/create-verified-domain`,
       {
         method: "POST",
         headers: {

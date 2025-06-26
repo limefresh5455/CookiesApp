@@ -55,7 +55,7 @@
   var CC_MODAL_ID = "cc-modal-cookies-banner";
   var CC_PENDING_COOKIES_KEY = "captainConsentPending";
   var CC_COOKIE_MODAL = "cc_consent";
-  var CC_SERVER_URL = "https://cc-platform-api-prod.fly.dev";
+  var CC_SERVER_URL = "https://api-dev.cptn.co";
   var CC_STANDARD_MODE_ONLY_SETTINGS = "ONLY_SETTINGS";
   var CC_STANDARD_MODE_BANNER_LINEAL = "BANNER_LINEAL";
   var CC_MODES_ALLOWED = [
@@ -70,7 +70,7 @@
 
   // scripts/templates/services.js
   async function loadBannerData() {
-    const paramToken = "b8fc5760-687c-43ff-a107-7e504cb92430";
+    const paramToken = "b850f6a3-43b2-4c56-b9a5-98b2ff0b6235";
     const accessToken = paramToken || document.currentScript.getAttribute("access-token");
     const response = await fetch(
       `${CC_SERVER_URL}/banner/banner-token?access-token=${accessToken}`
@@ -3096,10 +3096,10 @@
         });
       }
       const response = {
-        vendorListVersion: gvl.vendorListVersion,
+        vendorListVersion: parseInt(gvl.vendorListVersion),
         lastUpdated: gvl.lastUpdated,
-        gvlSpecificationVersion: gvl.gvlSpecificationVersion,
-        tcfPolicyVersion: gvl.tcfPolicyVersion,
+        gvlSpecificationVersion: parseInt(gvl.gvlSpecificationVersion),
+        tcfPolicyVersion: parseInt(gvl.tcfPolicyVersion),
         vendorList: {
           vendors,
           purposes,
@@ -3175,6 +3175,26 @@
       throw error;
     }
   }, "saveConsent");
+  var validateTCString = /* @__PURE__ */ __name((tcString) => {
+    if (!tcString || typeof tcString !== "string") {
+      return { valid: false, error: "TCString is not a valid string" };
+    }
+    try {
+      if (!/^[A-Za-z0-9+/=]+$/.test(tcString)) {
+        return { valid: false, error: "TCString format is invalid" };
+      }
+      const decodedModel = initDecode()(tcString);
+      if (!decodedModel) {
+        return { valid: false, error: "TCString decode failed" };
+      }
+      if (!decodedModel.cmpId || !decodedModel.vendorListVersion) {
+        return { valid: false, error: "TCString missing required fields" };
+      }
+      return { valid: true, model: decodedModel };
+    } catch (error) {
+      return { valid: false, error: error.message };
+    }
+  }, "validateTCString");
   var registerTcfApi = /* @__PURE__ */ __name(() => {
     logIfDev("\u23F3 Registrando __tcfapi");
     initDecode();
@@ -3188,19 +3208,58 @@
           tcString = "";
         }
       }
+      const validation = validateTCString(tcString);
+      if (!validation.valid) {
+        warnIfDev("\u274C TCString validation failed:", validation.error);
+        try {
+          if (gvlInstance) {
+            const newTcModel = new TCModel(gvlInstance);
+            newTcModel.cmpId = 111;
+            newTcModel.cmpVersion = 1;
+            newTcModel.consentScreen = 0;
+            newTcModel.consentLanguage = "EN";
+            newTcModel.publisherCountryCode = "US";
+            newTcModel.purposeOneTreatment = false;
+            newTcModel.vendorListVersion = gvlInstance.vendorListVersion;
+            for (const purposeId of Object.keys(gvlInstance.purposes)) {
+              const id = Number(purposeId);
+              newTcModel.purposeConsents.set(id, false);
+              newTcModel.purposeLegitimateInterests.set(id, false);
+            }
+            for (const vendorId of Object.keys(gvlInstance.vendors)) {
+              const id = Number(vendorId);
+              newTcModel.vendorConsents.set(id, false);
+              newTcModel.vendorLegitimateInterests.set(id, false);
+            }
+            tcString = TCString.encode(newTcModel);
+            localStorage.setItem("euconsent-v2", tcString);
+            window.__tcString = tcString;
+            model = newTcModel;
+            logIfDev("\u2705 Generated new valid TCString after validation failure");
+          }
+        } catch (err) {
+          warnIfDev(
+            "\u274C Error generating new TCString after validation failure:",
+            err
+          );
+          tcString = "";
+        }
+      } else {
+        model = validation.model;
+      }
       const gdprApplies = getGDPRStatus();
       const tcfPolicyVersion = gvlInstance?.tcfPolicyVersion || 2;
       const response = {
         tcString,
-        tcfPolicyVersion,
+        tcfPolicyVersion: parseInt(tcfPolicyVersion),
         // Use TCF policy version from GVL
         gdprApplies,
         // Use proper GDPR detection
-        cmpId: model.cmpId,
-        cmpVersion: model.cmpVersion,
-        consentScreen: model.consentScreen,
+        cmpId: parseInt(model.cmpId),
+        cmpVersion: parseInt(model.cmpVersion),
+        consentScreen: parseInt(model.consentScreen),
         consentLanguage: model.consentLanguage,
-        vendorListVersion: model.vendorListVersion,
+        vendorListVersion: parseInt(model.vendorListVersion),
         publisherCC: model.publisherCountryCode,
         purposeOneTreatment: model.purposeOneTreatment,
         useNonStandardStacks: model.useNonStandardStacks,
@@ -3243,7 +3302,7 @@
         eventStatus: "tcloaded",
         cmpStatus,
         displayStatus: userHasInteracted ? "disabled" : "visible",
-        apiVersion: "2.0"
+        apiVersion: parseInt(2)
       };
       if (includeInApp) {
         response.inApp = { ...response };
@@ -3295,15 +3354,15 @@
       const tcfPolicyVersion = gvlInstance?.tcfPolicyVersion || 2;
       return {
         tcString,
-        tcfPolicyVersion,
+        tcfPolicyVersion: parseInt(tcfPolicyVersion),
         // Use TCF policy version from GVL
         gdprApplies,
         // Use proper GDPR detection
-        cmpId: 111,
-        cmpVersion: 1,
-        consentScreen: 0,
+        cmpId: parseInt(111),
+        cmpVersion: parseInt(1),
+        consentScreen: parseInt(0),
         consentLanguage: "EN",
-        vendorListVersion: gvlInstance?.vendorListVersion || 0,
+        vendorListVersion: parseInt(gvlInstance?.vendorListVersion || 0),
         publisherCC: "US",
         purposeOneTreatment: false,
         useNonStandardStacks: false,
@@ -3328,7 +3387,7 @@
         eventStatus: "tcloaded",
         cmpStatus: status,
         displayStatus: userHasInteracted ? "disabled" : "visible",
-        apiVersion: "2.0"
+        apiVersion: parseInt(2)
       };
     }, "createFallbackResponse");
     window.__tcfapi = (command, version, callback, parameter) => {
@@ -3346,17 +3405,17 @@
           // Only true if we're past loading state
           cmpStatus,
           displayStatus: userHasInteracted ? "disabled" : "visible",
-          apiVersion: "2.0",
-          gvlVersion: gvlInstance?.vendorListVersion || 0,
-          tcfPolicyVersion: gvlInstance?.tcfPolicyVersion || 2,
+          apiVersion: parseInt(2),
+          gvlVersion: parseInt(gvlInstance?.vendorListVersion || 0),
+          tcfPolicyVersion: parseInt(gvlInstance?.tcfPolicyVersion || 2),
           // Read from GVL instead of hardcoding
-          cmpId: 111,
-          cmpVersion: 1,
+          cmpId: parseInt(111),
+          cmpVersion: parseInt(1),
           cmpDisplayStatus: userHasInteracted ? "disabled" : "visible",
-          cmpApiVersion: "2.0",
-          cmpTcfPolicyVersion: gvlInstance?.tcfPolicyVersion || 2,
+          cmpApiVersion: parseInt(2),
+          cmpTcfPolicyVersion: parseInt(gvlInstance?.tcfPolicyVersion || 2),
           // Read from GVL
-          cmpGvlVersion: gvlInstance?.vendorListVersion || 0
+          cmpGvlVersion: parseInt(gvlInstance?.vendorListVersion || 0)
         };
         logIfDev("\u{1F3D3} Ping response:", response);
         callback(response, true);
@@ -3426,10 +3485,12 @@
                     err
                   );
                   const fallbackResponse = {
-                    vendorListVersion: 0,
+                    vendorListVersion: parseInt(0),
                     lastUpdated: (/* @__PURE__ */ new Date()).toISOString(),
-                    gvlSpecificationVersion: 3,
-                    tcfPolicyVersion: gvlInstance?.tcfPolicyVersion || 2,
+                    gvlSpecificationVersion: parseInt(3),
+                    tcfPolicyVersion: parseInt(
+                      gvlInstance?.tcfPolicyVersion || 2
+                    ),
                     vendorList: {
                       vendors: {},
                       purposes: {},
@@ -3490,10 +3551,10 @@
               warnIfDev("\u274C Error in stub/loading state command handling:", err);
               if (command === "getVendorList") {
                 const fallbackResponse = {
-                  vendorListVersion: 0,
+                  vendorListVersion: parseInt(0),
                   lastUpdated: (/* @__PURE__ */ new Date()).toISOString(),
-                  gvlSpecificationVersion: 3,
-                  tcfPolicyVersion: gvlInstance?.tcfPolicyVersion || 2,
+                  gvlSpecificationVersion: parseInt(3),
+                  tcfPolicyVersion: parseInt(gvlInstance?.tcfPolicyVersion || 2),
                   vendorList: {
                     vendors: {},
                     purposes: {},
@@ -3520,10 +3581,10 @@
         );
         if (command === "getVendorList") {
           const fallbackResponse = {
-            vendorListVersion: 0,
+            vendorListVersion: parseInt(0),
             lastUpdated: (/* @__PURE__ */ new Date()).toISOString(),
-            gvlSpecificationVersion: 3,
-            tcfPolicyVersion: gvlInstance?.tcfPolicyVersion || 2,
+            gvlSpecificationVersion: parseInt(3),
+            tcfPolicyVersion: parseInt(gvlInstance?.tcfPolicyVersion || 2),
             vendorList: {
               vendors: {},
               purposes: {},
@@ -3552,10 +3613,10 @@
           } catch (error) {
             warnIfDev("\u274C Error in getVendorList:", error);
             const fallbackResponse = {
-              vendorListVersion: 0,
+              vendorListVersion: parseInt(0),
               lastUpdated: (/* @__PURE__ */ new Date()).toISOString(),
-              gvlSpecificationVersion: 3,
-              tcfPolicyVersion: gvlInstance?.tcfPolicyVersion || 2,
+              gvlSpecificationVersion: parseInt(3),
+              tcfPolicyVersion: parseInt(gvlInstance?.tcfPolicyVersion || 2),
               vendorList: {
                 vendors: {},
                 purposes: {},
@@ -3574,6 +3635,49 @@
         try {
           logIfDev(`\u{1F4CB} Handling ${command} command`);
           const tcString = localStorage.getItem("euconsent-v2");
+          if (tcString) {
+            const validation = validateTCString(tcString);
+            if (!validation.valid) {
+              warnIfDev(
+                `\u274C TCString validation failed in ${command}:`,
+                validation.error
+              );
+              if (gvlInstance) {
+                const newTcModel = new TCModel(gvlInstance);
+                newTcModel.cmpId = 111;
+                newTcModel.cmpVersion = 1;
+                newTcModel.consentScreen = 0;
+                newTcModel.consentLanguage = "EN";
+                newTcModel.publisherCountryCode = "US";
+                newTcModel.purposeOneTreatment = false;
+                newTcModel.vendorListVersion = gvlInstance.vendorListVersion;
+                for (const purposeId of Object.keys(gvlInstance.purposes)) {
+                  const id = Number(purposeId);
+                  newTcModel.purposeConsents.set(id, false);
+                  newTcModel.purposeLegitimateInterests.set(id, false);
+                }
+                for (const vendorId of Object.keys(gvlInstance.vendors)) {
+                  const id = Number(vendorId);
+                  newTcModel.vendorConsents.set(id, false);
+                  newTcModel.vendorLegitimateInterests.set(id, false);
+                }
+                const newTcString = TCString.encode(newTcModel);
+                localStorage.setItem("euconsent-v2", newTcString);
+                window.__tcString = newTcString;
+                logIfDev("\u2705 Generated new valid TCString for getTCData");
+                const response2 = createTCDataResponse(
+                  newTcModel,
+                  newTcString,
+                  command === "getInAppTCData"
+                );
+                logIfDev(`\u{1F4E4} ${command} response (with new TCString):`, response2);
+                callback(response2, true);
+              } else {
+                throw new Error("GVL not available for TCString generation");
+              }
+              return;
+            }
+          }
           if (!tcString || typeof tcString !== "string") {
             throw new Error("Invalid TCString format");
           }
@@ -3641,12 +3745,12 @@
         const tcString = localStorage.getItem("euconsent-v2") || "";
         if (tcString) {
           try {
-            const decodedModel = initDecode()(tcString);
-            if (decodedModel) {
+            const validation = validateTCString(tcString);
+            if (validation.valid) {
               logIfDev("\u2705 TCString verified successfully");
               cmpStatus = "loaded";
             } else {
-              throw new Error("Invalid TCString format");
+              throw new Error(`Invalid TCString: ${validation.error}`);
             }
           } catch (err) {
             warnIfDev("\u274C Invalid TCString in localStorage:", err);
@@ -3761,6 +3865,51 @@
       cmpStatus = "error";
     });
   }, "registerTcfApi");
+  var forceRegenerateTCString = /* @__PURE__ */ __name(async () => {
+    try {
+      logIfDev("\u{1F504} Forcing TCString regeneration...");
+      const gvl = await initGVL();
+      await gvl.readyPromise;
+      const tcModel = new TCModel(gvl);
+      tcModel.cmpId = 111;
+      tcModel.cmpVersion = 1;
+      tcModel.consentScreen = 0;
+      tcModel.consentLanguage = "EN";
+      tcModel.publisherCountryCode = "US";
+      tcModel.purposeOneTreatment = false;
+      tcModel.vendorListVersion = gvl.vendorListVersion;
+      for (const purposeId of Object.keys(gvl.purposes)) {
+        const id = Number(purposeId);
+        tcModel.purposeConsents.set(id, false);
+        tcModel.purposeLegitimateInterests.set(id, false);
+      }
+      for (const vendorId of Object.keys(gvl.vendors)) {
+        const id = Number(vendorId);
+        tcModel.vendorConsents.set(id, false);
+        tcModel.vendorLegitimateInterests.set(id, false);
+      }
+      if (gvl.specialFeatures && Object.keys(gvl.specialFeatures).length > 0 && tcModel.specialFeatureOptIns?.set) {
+        for (const featureId of Object.keys(gvl.specialFeatures)) {
+          const id = Number(featureId);
+          tcModel.specialFeatureOptIns.set(id, false);
+        }
+      }
+      const tcString = TCString.encode(tcModel);
+      localStorage.setItem("euconsent-v2", tcString);
+      window.__tcString = tcString;
+      document.cookie = `euconsent-v2=${tcString}; path=/; SameSite=None; Secure`;
+      logIfDev("\u2705 TCString regenerated and stored:", {
+        length: tcString.length,
+        preview: tcString.substring(0, 50) + "...",
+        vendorListVersion: gvl.vendorListVersion,
+        storedIn: ["localStorage", "window.__tcString", "cookie"]
+      });
+      return tcString;
+    } catch (error) {
+      warnIfDev("\u274C Error forcing TCString regeneration:", error);
+      throw error;
+    }
+  }, "forceRegenerateTCString");
   var waitForBodyAndInitTcfApi = /* @__PURE__ */ __name(async () => {
     window.__tcfapiLocatorReady = false;
     injectTcfApiLocator();
@@ -3785,6 +3934,12 @@
         await saveConsent(false);
       } else {
         logIfDev("\u2705 TCString already exists in localStorage");
+        const existingTCString = localStorage.getItem("euconsent-v2");
+        const validation = validateTCString(existingTCString);
+        if (!validation.valid) {
+          logIfDev("\u26A0\uFE0F Existing TCString is invalid, regenerating...");
+          await forceRegenerateTCString();
+        }
       }
     } catch (error) {
       warnIfDev("\u274C Error while waiting for GVL before saving consent:", error);
@@ -3796,6 +3951,32 @@
         warnIfDev("\u274C getTCData fall\xF3 al forzar para CMP Validator");
       }
     });
+    setTimeout(async () => {
+      try {
+        const tcString = localStorage.getItem("euconsent-v2") || window.__tcString;
+        if (!tcString) {
+          logIfDev(
+            "\u26A0\uFE0F No TCString found, forcing regeneration for CMP Validator"
+          );
+          await forceRegenerateTCString();
+        } else {
+          const validation = validateTCString(tcString);
+          if (!validation.valid) {
+            logIfDev(
+              "\u26A0\uFE0F TCString validation failed, regenerating for CMP Validator"
+            );
+            await forceRegenerateTCString();
+          }
+        }
+        window.__tcfapi?.("getTCData", 2, (data, success) => {
+          if (success) {
+            logIfDev("\u{1F4E5} Second getTCData call for CMP Validator:", data);
+          }
+        });
+      } catch (err) {
+        warnIfDev("\u274C Error in CMP Validator compatibility measures:", err);
+      }
+    }, 2e3);
     setTimeout(() => {
       if (!window.__tcfapiLocatorReady) {
         logIfDev("\u26A0\uFE0F CMP not ready after timeout, forcing initialization");
