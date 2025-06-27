@@ -7,8 +7,10 @@ import { login } from "../../shopify.server";
 
 import styles from "./styles.module.css";
 import { getAuth } from "@clerk/remix/ssr.server";
+
 import { checkDomainExists, createVerifiedDomain } from "app/services/captainApi";
 import db from "../../db.server";
+import logo from './logo.png';
 
 export const loader = async (args: LoaderFunctionArgs) => {
   const url = new URL(args.request.url);
@@ -70,7 +72,7 @@ export const action = async (args: ActionFunctionArgs) => {
         userId: userIdString,
       },
     });
-    
+
     console.log("existingUser", existingUser)
 
     if (exists && existingUser) {
@@ -91,7 +93,7 @@ export const action = async (args: ActionFunctionArgs) => {
           domain: domain,
         },
         update: {
-          email:  String(email ?? "").trim(), 
+          email: String(email ?? "").trim(),
           accessToken: String(createData.bannerToken ?? "").trim(),
           scannerId: String(createData.scannerId ?? "").trim(),
           createDate: new Date(),
@@ -99,7 +101,7 @@ export const action = async (args: ActionFunctionArgs) => {
         create: {
           userId: userIdString,
           domain,
-          email:  String(email ?? "").trim(), 
+          email: String(email ?? "").trim(),
           accessToken: String(createData.bannerToken ?? "").trim(),
           scannerId: String(createData.scannerId ?? "").trim(),
           createDate: new Date(),
@@ -109,7 +111,7 @@ export const action = async (args: ActionFunctionArgs) => {
       const url = new URL(request.url);
       const redirectUrl = `${url.origin}${url.pathname}?shop=${encodeURIComponent(domain)}`;
       return redirect(redirectUrl);
-      
+
     }
 
   } catch (err) {
@@ -129,61 +131,72 @@ export default function App() {
   const isSubmitting = navigation.state === "submitting";
 
   return (
-    <div className={styles.index}>
-      <div className={styles.content}>
-        <h1 className={styles.heading}>Check and Create Site if Not Found</h1>
-        <p className={styles.text}>This feature checks if a website already exists using the given Shopify domain and user ID.
-If the site doesn't exist, it automatically creates a new one with the same details.</p>
+    <div className={styles.page}>
 
-        {showForm && (
-          <Form className={styles.form} method="post">
-            <label className={styles.label}>
-              <span className={styles.span}>Shop domain</span>
-              <input
-                className={styles.input}
-                type="text"
-                name="shop"
-                placeholder="e.g: my-shop-domain.myshopify.com"
+      <header className={styles.header}>
+        <div className={styles.headerContainer}>
+          <div className={styles.logo}>
+            <img src={logo} alt="Logo" className={styles.logoImage} />
+          </div>
+        </div>
+      </header>
+      <div className={styles.index}>
+
+        <div className={styles.content}>
+          <h1 className={styles.heading}>Check and Create Site if Not Found</h1>
+          <p className={styles.text}>This feature checks if a website already exists using the given Shopify domain and user ID.
+            If the site doesn't exist, it automatically creates a new one with the same details.</p>
+
+          {showForm && (
+            <Form className={styles.form} method="post">
+              <label className={styles.label}>
+                <span className={styles.span}>Shop domain</span>
+                <input
+                  className={styles.input}
+                  type="text"
+                  name="shop"
+                  placeholder="e.g: my-shop-domain.myshopify.com"
+                  disabled={isSubmitting}
+                  required
+                />
+                <span className={styles.span}>e.g: my-shop-domain.myshopify.com</span>
+              </label>
+
+              <button
+                type="submit"
                 disabled={isSubmitting}
-                required
-              />
-              <span className={styles.span}>e.g: my-shop-domain.myshopify.com</span>
-            </label>
+                className={styles.button}
+              >
+                {isSubmitting ? "Processing..." : "Process Domain"}
+              </button>
+            </Form>
+          )}
 
-            <button
-              type="submit"
-              disabled={isSubmitting}
-              className={styles.button}
-            >
-              {isSubmitting ? "Processing..." : "Process Domain"}
-            </button>
-          </Form>
-        )}
+          {actionData?.error && (
+            <div style={{
+              color: "red",
+              margin: "10px 0",
+              padding: "10px",
+              backgroundColor: "#f8d7da",
+              borderRadius: "4px"
+            }}>
+              Error: {actionData.error}
+            </div>
+          )}
 
-        {actionData?.error && (
-          <div style={{
-            color: "red",
-            margin: "10px 0",
-            padding: "10px",
-            backgroundColor: "#f8d7da",
-            borderRadius: "4px"
-          }}>
-            Error: {actionData.error}
-          </div>
-        )}
-
-        {isSubmitting && (
-          <div style={{
-            margin: "10px 0",
-            padding: "10px",
-            backgroundColor: "#e7f3ff",
-            color: "#0066cc",
-            borderRadius: "4px",
-            fontWeight: "bold"
-          }}>
-            Processing domain...
-          </div>
-        )}
+          {isSubmitting && (
+            <div style={{
+              margin: "10px 0",
+              padding: "10px",
+              backgroundColor: "#e7f3ff",
+              color: "#0066cc",
+              borderRadius: "4px",
+              fontWeight: "bold"
+            }}>
+              Processing domain...
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );

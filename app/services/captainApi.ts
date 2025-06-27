@@ -16,6 +16,15 @@ interface DomainData {
   verified?: boolean;
 }
 
+interface statusCheckResponse {
+  ALLOWED: number;
+  NO_ACTIVITY: number;
+  PARTIALLY_ALLOWED: number;
+  REJECTED: number;
+  count: number;
+}
+
+
 export const getClerkId = async (email: string) => {
   const phone = "+91 1234567884"; // optional: you can pass this dynamically too
 
@@ -80,8 +89,68 @@ export const getClerkId = async (email: string) => {
   }
 };
 
+export async function userCounts(userId: string, scannerId: string, from: string, to: string) {
+  try {
+    const url = `https://api-dev.cptn.co/bannerTracking/userCount?from=${from}&to=${to}&scannerId=${scannerId}&userId=${userId}`;
+    console.log("userCounts API URL:", url); // Debug
+    const response = await fetch(url, {
+      method: "GET",
+      headers: {
+        accept: "*/*",
+      },
+    });
+    if (!response.ok) {
+      console.error("userCounts API failed:", response.status, response.statusText);
+      throw new Error("Failed to fetch user counts");
+    }
+    const data = await response.json();
+    console.log("userCounts API response:", data); // Debug
+    return Array.isArray(data) ? data : [];
+  } catch (error) {
+    console.error("Error fetching user counts:", error);
+    return []; // Fallback
+  }
+}
+export async function viewCounts(userId: string, scannerId: string, from: string, to: string) {
+  try {
+    const url = `https://api-dev.cptn.co/bannerTracking/count?from=${from}&to=${to}&scannerId=${scannerId}&userId=${userId}`;
+    console.log("viewCounts API URL:", url); // Debug
+    const response = await fetch(url, {
+      method: "GET",
+      headers: {
+        accept: "*/*",
+      },
+    });
+    if (!response.ok) {
+      console.error("viewCounts API failed:", response.status, response.statusText);
+      throw new Error("Failed to fetch user counts");
+    }
+    const data = await response.json();
+    console.log("viewCounts API response:", data); // Debug
+    return Array.isArray(data) ? data : [];
+  } catch (error) {
+    console.error("Error fetching user counts:", error);
+    return []; // Fallback
+  }
+}
 
 
+export async function statusCounts(userId: string, scannerId: string, from: string, to: string): Promise<statusCheckResponse> {
+  const apiUrl = `https://api-dev.cptn.co/bannerTracking/statusCounts?from=${from}&to=${to}&${scannerId}=45&userId=${userId}`;
+  
+  try {
+    const response = await fetch(apiUrl);
+    if (!response.ok) {
+      throw new Error("Failed to fetch banner status");
+    }
+    
+    const data = await response.json();
+    return data; // or return response.json() directly
+  } catch (error) {
+    console.error("Error fetching status counts:", error);
+    throw error; // or handle error as needed
+  }
+}
 
 export async function checkDomainExists(userId: string, domain: string): Promise<DomainCheckResponse> {
   try {

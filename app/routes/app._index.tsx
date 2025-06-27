@@ -1,10 +1,8 @@
 import {
   Page,
-  Layout,
   BlockStack,
   Text,
   Card,
-  Box,
   Grid,
   Button,
   InlineStack,
@@ -13,39 +11,55 @@ import {
 } from "@shopify/polaris";
 import { TitleBar } from "@shopify/app-bridge-react";
 import { useLoaderData } from "@remix-run/react";
-import type { LoaderFunctionArgs } from "@remix-run/node";
+import type { json, LoaderFunctionArgs } from "@remix-run/node";
 import { authenticate } from "../shopify.server";
 
 
 import {
-  AppsIcon,            
-  CalendarIcon,        
-  CheckCircleIcon,     
-  MinusCircleIcon,     
-  XCircleIcon,         
-  QuestionCircleIcon, 
-  LinkIcon,            
-  NoteIcon,            
-  PageIcon,            
+  CheckCircleIcon,
+  MinusCircleIcon,
+  XCircleIcon,
+  QuestionCircleIcon
 } from '@shopify/polaris-icons';
 import db from "../db.server";
-import { getClerkId, createVerifiedDomain } from "../services/captainApi";
+import { getClerkId, createVerifiedDomain, statusCounts, userCounts, viewCounts } from "../services/captainApi";
+import { useState, useEffect } from "react";
+
+
+// Define the loader data type
+interface LoaderData {
+  consentStatus: {
+    ALLOWED: number;
+    NO_ACTIVITY: number;
+    PARTIALLY_ALLOWED: number;
+    REJECTED: number;
+  };
+  metrics: {
+    totalUsersThisWeek: number;
+    totalViewsThisWeek: number;
+  };
+  userId: string;
+  scannerId: string;
+  error?: string;
+}
+
+
 
 export const loader = async ({ request }: LoaderFunctionArgs) => {
   const { session } = await authenticate.admin(request);
   const shop = session.shop;
   const shopID = session.id;
 
-  const existingEmail:any = await db.session.findFirst({
+  const existingEmail: any = await db.session.findFirst({
     where: { id: shopID },
   });
- 
+
   if (existingEmail.email == null) {
     const accessToken = session.accessToken;
     const response = await fetch(`https://${shop}/admin/api/2024-01/graphql.json`, {
       method: "POST",
       headers: {
-        "X-Shopify-Access-Token": accessToken,
+        "X-Shopify-Access-Token": `${accessToken}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
@@ -80,13 +94,13 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
         firstName: name,
       },
     });
-  }else{
-    const existingCaptian:any = await db.captain.findFirst({
+  } else {
+    const existingCaptian: any = await db.captain.findFirst({
       where: { domain: shop },
     });
 
 
-    if(!existingCaptian){
+    if (!existingCaptian) {
       const userData = await getClerkId(existingEmail.email);
       console.log(userData);
 
@@ -102,7 +116,7 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
         },
         update: {
           domain: shop,
-          email:  String(existingEmail.email ?? "").trim(), 
+          email: String(existingEmail.email ?? "").trim(),
           accessToken: String(createData.bannerToken ?? "").trim(),
           scannerId: String(createData.scannerId ?? "").trim(),
           createDate: new Date(),
@@ -110,7 +124,7 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
         create: {
           userId: userData.clerkId,
           domain: shop,
-          email:  String(existingEmail.email ?? "").trim(), 
+          email: String(existingEmail.email ?? "").trim(),
           accessToken: String(createData.bannerToken ?? "").trim(),
           scannerId: String(createData.scannerId ?? "").trim(),
           createDate: new Date(),
@@ -118,42 +132,207 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
       });
     }
   }
-  return new Response("Email updated successfully");
+  
+  const existingStatusData: any = await db.captain.findFirst({
+    where: { domain: shop },
+  });
+
+  const from = new Date(Date.now() - 6 * 24 * 60 * 60 * 1000).toLocaleDateString('en-US', {
+  month: '2-digit',
+  day: '2-digit',
+  year: 'numeric'
+  }).replace(/\//g, '-');
+
+  const to = new Date().toLocaleDateString('en-US', {
+  month: '2-digit',
+  day: '2-digit',
+  year: 'numeric'
+  }).replace(/\//g, '-');
+  
+  let statusData = { ALLOWED: 0, NO_ACTIVITY: 0, PARTIALLY_ALLOWED: 0, REJECTED: 0 };
+  try {
+    statusData = await statusCounts(existingStatusData.userId, existingStatusData.scannerId, from, to);
+    console.log("Status Counts Result:", statusData);
+  } catch (error) {
+    console.error("Failed to fetch status counts:", error);
+  }
+
+  
+  let totalViewsThisWeek = 0;
+  try {
+    if (existingStatusData) {
+      const viewCountData = await viewCounts(existingStatusData.userId, existingStatusData.scannerId, from, to);
+      if (viewCountData) {
+        totalViewsThisWeek = viewCountData.reduce((sum: number, item: { count: number }) => sum + item.count, 0);
+        console.log("Processed totalUsersThisWeek:", totalViewsThisWeek);
+      }
+
+    } else {
+      console.warn("No captain record for userCounts, skipping API call");
+    }
+  } catch (error) {
+    console.error("Failed to fetch user count:", error);
+  }
+
+  // Fetch user count
+  let totalUsersThisWeek = 0;
+  try {
+    if (existingStatusData) {
+      const userCountData = await userCounts(existingStatusData.userId, existingStatusData.scannerId, from, to);
+      if (userCountData) {
+        totalUsersThisWeek = userCountData.reduce((sum: number, item: { count: number }) => sum + item.count, 0);
+        console.log("Processed totalUsersThisWeek:", totalUsersThisWeek);
+      }
+
+    } else {
+      console.warn("No captain record for userCounts, skipping API call");
+    }
+  } catch (error) {
+    console.error("Failed to fetch user count:", error);
+  }
+
+  // Return JSON response
+  return new Response(
+    JSON.stringify({
+      consentStatus: statusData,
+      metrics: { totalUsersThisWeek, totalViewsThisWeek },
+      userId: existingStatusData?.userId || '',
+      scannerId: existingStatusData?.scannerId || '',
+      error: totalUsersThisWeek === 0 ? "No user count data available" : undefined,
+    }),
+    {
+      status: 200,
+      headers: {
+        "Content-Type": "application/json",
+      },
+    }
+  );
 };
 
+
 export default function DashboardPage() {
+  const { consentStatus, metrics, userId, scannerId } = useLoaderData<LoaderData>();
+  const [selectedRange, setSelectedRange] = useState('week');
+  const [results, setResults] = useState<{
+    start: string;
+    end: string;
+    dayCount: number;
+    actualDays: number;
+  } | null>(null);
+  const [changeText, setChangeText] = useState('week');
 
-  useLoaderData();
+  // Get today's date
+  const today = new Date();
 
-  // Mock data for the dashboard (replace with actual data fetching logic)
-  const dashboardData = {
-    consentStatus: {
-      allowed: { count: 120, fromLastWeek: 10, trend: 'up' as 'up' | 'down' | 'flat' },
-      partiallyAllowed: { count: 30, fromLastWeek: 5, trend: 'flat' as 'up' | 'down' | 'flat' },
-      rejected: { count: 15, fromLastWeek: 2, trend: 'down' as 'up' | 'down' | 'flat' },
-      noActivity: { count: 5, fromLastWeek: 0, trend: 'flat' as 'up' | 'down' | 'flat' },
-    },
-    metrics: {
-      totalUsersThisWeek: 1500,
-      totalViewsThisWeek: 7500,
-    },
-    summary: {
-      domains: 1,
-      reports: 75,
-      banners: 1,
-      pages: 1,
-    },
+  // Helper function to format date as DD-MM-YYYY
+  const formatDate = (date:any) => {
+    const day = String(date.getDate()).padStart(2, '0');
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const year = date.getFullYear();
+    return `${month}-${day}-${year}`;
   };
 
-  const renderTrendIcon = (trend: 'up' | 'down' | 'flat') => {
-    // For visual trend indicators, you might want to import specific arrow icons:
-    // import { ArrowUpIcon, ArrowDownIcon } from '@shopify/polaris-icons';
+  // Helper function to calculate days between two dates
+  const calculateDays = (startDate:any, endDate:any) => {
+    const oneDay = 24 * 60 * 60 * 1000;
+    return Math.round((endDate - startDate) / oneDay) + 1;
+  };
+
+  // Main function to get date ranges
+  const getDateRanges = (rangeType:any) => {
+    const today = new Date();
+    let startDate, endDate, dayCount;
+
+    switch (rangeType) {
+      case 'week':
+        // 7 days back from today
+        startDate = new Date(today);
+        startDate.setDate(today.getDate() - 6); // 6 days back + today = 7 days
+        endDate = new Date(today);
+        dayCount = 7;
+        break;
+
+      case 'month':
+        // 31 days back from today
+        startDate = new Date(today);
+        startDate.setDate(today.getDate() - 30); // 30 days back + today = 31 days
+        endDate = new Date(today);
+        dayCount = 31;
+        break;
+
+      case 'year':
+        // 365 days back from today
+        startDate = new Date(today);
+        startDate.setDate(today.getDate() - 364); // 364 days back + today = 365 days
+        endDate = new Date(today);
+        dayCount = 365;
+        break;
+
+      default:
+        return null;
+    }
+
+    return {
+      start: formatDate(startDate),
+      end: formatDate(endDate),
+      dayCount: dayCount,
+      actualDays: calculateDays(startDate, endDate)
+    };
+  };
+
+  const [dashboardData, setDashboardData] = useState({
+    consentStatus: {
+      allowed: { count: consentStatus.ALLOWED, fromLastWeek: 0, trend: "flat" as const },
+      partiallyAllowed: { count: consentStatus.PARTIALLY_ALLOWED, fromLastWeek: 0, trend: "flat" as const },
+      rejected: { count: consentStatus.REJECTED, fromLastWeek: 0, trend: "flat" as const },
+      noActivity: { count: consentStatus.NO_ACTIVITY, fromLastWeek: 0, trend: "flat" as const },
+    },
+    metrics: {
+      totalUsersThisWeek: metrics?.totalUsersThisWeek || 0,
+      totalViewsThisWeek: metrics?.totalViewsThisWeek || 0,
+    },
+  });
+  // Update handleAnalytics
+  const handleAnalytics = async (rangeType: string) => {
+    const result = getDateRanges(rangeType);
+    setSelectedRange(rangeType);
+    setResults(result);
+    setChangeText(rangeType);
+    if (!result || !userId || !scannerId) return;
+    try {
+      
+      const statusData = await statusCounts(userId, scannerId, result.start, result.end);
+      const userCountData = await userCounts(userId, scannerId, result.start, result.end);
+      const viewCountData = await viewCounts(userId, scannerId, result.start, result.end);
+      
+      const totalUsersThisWeek = userCountData?.reduce((sum: number, item: { count: number }) => sum + item.count, 0) || 0;
+      const totalViewsThisWeek = viewCountData?.reduce((sum: number, item: { count: number }) => sum + item.count, 0) || 0;
+
+      setDashboardData({
+        consentStatus: {
+          allowed: { count: statusData.ALLOWED, fromLastWeek: 0, trend: "flat" as const },
+          partiallyAllowed: { count: statusData.PARTIALLY_ALLOWED, fromLastWeek: 0, trend: "flat" as const },
+          rejected: { count: statusData.REJECTED, fromLastWeek: 0, trend: "flat" as const },
+          noActivity: { count: statusData.NO_ACTIVITY, fromLastWeek: 0, trend: "flat" as const },
+        },
+        metrics: {
+          totalUsersThisWeek,
+          totalViewsThisWeek,
+        },
+      });
+    } catch (error) {
+      console.error("Failed to fetch analytics data:", error);
+    }
+  };
+
+    
+  const renderTrendIcon = (trend: "up" | "down" | "flat") => {
     switch (trend) {
-      case 'up':
-        return <Text as="span" tone="success" visuallyHidden>Up</Text>; // Consider using <Icon source={ArrowUpIcon} />
-      case 'down':
-        return <Text as="span" tone="critical" visuallyHidden>Down</Text>; // Consider using <Icon source={ArrowDownIcon} />
-      case 'flat':
+      case "up":
+        return <Text as="span" tone="success" visuallyHidden>Up</Text>;
+      case "down":
+        return <Text as="span" tone="critical" visuallyHidden>Down</Text>;
+      case "flat":
         return <Text as="span" tone="subdued" visuallyHidden>No change</Text>;
       default:
         return null;
@@ -167,16 +346,15 @@ export default function DashboardPage() {
       <BlockStack gap="600">
         <InlineStack align="end" gap="200">
           <ButtonGroup>
-            <Button pressed>Week</Button>
-            <Button>Month</Button>
-            <Button>Year</Button>
+            <Button pressed={selectedRange === 'week'} onClick={() => handleAnalytics("week")}>Week</Button>
+            <Button pressed={selectedRange === 'month'} onClick={() => handleAnalytics("month")}>Month</Button>
+            <Button pressed={selectedRange === 'year'} onClick={() => handleAnalytics("year")}>Year</Button>
           </ButtonGroup>
-          {/* Using the confirmed CalendarIcon */}
-          <Button icon={CalendarIcon} accessibilityLabel="Select date range" />
+
         </InlineStack>
 
         <Grid>
-          <Grid.Cell columnSpan={{ xs: 6, sm: 6, md: 6, lg: 9, xl: 9 }}>
+          <Grid.Cell columnSpan={{ xs: 6, sm: 6, md: 6, lg: 12, xl: 12 }}>
             <BlockStack gap="500">
               <Grid>
                 {/* Allowed Card */}
@@ -191,7 +369,8 @@ export default function DashboardPage() {
                       </InlineStack>
                       <Text as="p" variant="heading2xl">{dashboardData.consentStatus.allowed.count}</Text>
                       <Text as="p" variant="bodySm" tone="subdued">
-                        +{dashboardData.consentStatus.allowed.fromLastWeek} from last week {renderTrendIcon(dashboardData.consentStatus.allowed.trend)}
+                        Last {" "}
+                        {changeText}
                       </Text>
                     </BlockStack>
                   </Card>
@@ -210,7 +389,8 @@ export default function DashboardPage() {
                       </InlineStack>
                       <Text as="p" variant="heading2xl">{dashboardData.consentStatus.partiallyAllowed.count}</Text>
                       <Text as="p" variant="bodySm" tone="subdued">
-                        +{dashboardData.consentStatus.partiallyAllowed.fromLastWeek} from last week {renderTrendIcon(dashboardData.consentStatus.partiallyAllowed.trend)}
+                        Last week{" "}
+                        {changeText}
                       </Text>
                     </BlockStack>
                   </Card>
@@ -228,7 +408,8 @@ export default function DashboardPage() {
                       </InlineStack>
                       <Text as="p" variant="heading2xl">{dashboardData.consentStatus.rejected.count}</Text>
                       <Text as="p" variant="bodySm" tone="subdued">
-                        + {dashboardData.consentStatus.rejected.fromLastWeek} from last week {renderTrendIcon(dashboardData.consentStatus.rejected.trend)}
+                        Last week{" "}
+                        {changeText}
                       </Text>
                     </BlockStack>
                   </Card>
@@ -241,12 +422,13 @@ export default function DashboardPage() {
                       <InlineStack align="space-between">
                         <Text as="h3" variant="headingMd">No Activity</Text>
                         <Text as="span">
-                           <Icon source={QuestionCircleIcon} accessibilityLabel="No activity" />
+                          <Icon source={QuestionCircleIcon} accessibilityLabel="No activity" />
                         </Text>
                       </InlineStack>
                       <Text as="p" variant="heading2xl">{dashboardData.consentStatus.noActivity.count}</Text>
                       <Text as="p" variant="bodySm" tone="subdued">
-                        + {dashboardData.consentStatus.noActivity.fromLastWeek} from last week {renderTrendIcon(dashboardData.consentStatus.noActivity.trend)}
+                        Last week{" "}
+                        {changeText}
                       </Text>
                     </BlockStack>
                   </Card>
@@ -258,8 +440,9 @@ export default function DashboardPage() {
                 <Grid.Cell columnSpan={{ xs: 6, sm: 6, md: 6, lg: 6, xl: 6 }}>
                   <Card>
                     <BlockStack gap="200">
-                      <Text as="h3" variant="headingMd">Total Users this week</Text>
-                      <Text as="p" variant="heading3xl">{dashboardData.metrics.totalUsersThisWeek.toLocaleString()}</Text>
+                      <Text as="h3" variant="headingMd">Total Users this {" "}
+                        {changeText}</Text>
+                      <Text as="p" variant="heading2xl">{dashboardData.metrics.totalUsersThisWeek.toLocaleString()}</Text>
                       <Text as="p" variant="bodySm" tone="subdued">Number of users who have interacted</Text>
                     </BlockStack>
                   </Card>
@@ -267,97 +450,21 @@ export default function DashboardPage() {
                 <Grid.Cell columnSpan={{ xs: 6, sm: 6, md: 6, lg: 6, xl: 6 }}>
                   <Card>
                     <BlockStack gap="200">
-                      <Text as="h3" variant="headingMd">Total Views this week</Text>
-                      <Text as="p" variant="heading3xl">{dashboardData.metrics.totalViewsThisWeek.toLocaleString()}</Text>
-                      <Text as="p" variant="bodySm" tone="subdued">last week</Text>
+                      <Text as="h3" variant="headingMd">Total Views this {" "}
+                        {changeText}</Text>
+                      <Text as="p" variant="heading2xl">{dashboardData.metrics.totalViewsThisWeek.toLocaleString()}</Text>
+                      <Text as="p" variant="bodySm" tone="subdued">last {" "}
+                        {changeText}</Text>
                     </BlockStack>
                   </Card>
                 </Grid.Cell>
               </Grid>
 
-              {/* Users/Week Chart Placeholder */}
-              <Card>
-                <BlockStack gap="200">
-                  <Text as="h3" variant="headingMd">USERS/WEEK</Text>
-                  <Box minHeight="250px" borderRadius="100" padding="400">
-                    <Text alignment="center" as="p" tone="subdued">
-                      [Placeholder for Users/Week Chart]
-                      <br />
-                      <br />
-                      This chart would dynamically display user interaction trends over time.
-                      <br />
-                      (Requires backend analytics data integration)
-                    </Text>
-                  </Box>
-                </BlockStack>
-              </Card>
+
             </BlockStack>
           </Grid.Cell>
 
-          {/* Summary Cards */}
-          <Grid.Cell columnSpan={{ xs: 6, sm: 6, md: 4, lg: 3, xl: 3 }}>
-            <BlockStack gap="500">
-              {/* Domains Card */}
-              <Card>
-                <BlockStack gap="200">
-                  <InlineStack align="start" gap="200">
-                    <Text as="span">
-                      <Icon source={LinkIcon} accessibilityLabel="Domains" />
-                    </Text>
-                    <BlockStack gap="200">
-                      <Text as="h3" variant="headingMd">Domains</Text>
-                      <Text as="p" variant="heading2xl" alignment="start">{dashboardData.summary.domains}</Text>
-                    </BlockStack>
-                  </InlineStack>
-                </BlockStack>
-              </Card>
 
-              {/* Reports Card */}
-              <Card>
-                <BlockStack gap="200">
-                  <InlineStack align="start" gap="200">
-                    <Text as="span">
-                      <Icon source={NoteIcon} accessibilityLabel="Reports" />
-                    </Text>
-                    <BlockStack gap="200">
-                      <Text as="h3" variant="headingMd">Reports</Text>
-                      <Text as="p" variant="heading2xl">{dashboardData.summary.reports}</Text>
-                    </BlockStack>
-                  </InlineStack>
-                </BlockStack>
-              </Card>
-
-              {/* Banners Card */}
-              <Card>
-                <BlockStack gap="200">
-                  <InlineStack align="start" gap="200">
-                    <Text as="span">
-                      <Icon source={AppsIcon} accessibilityLabel="Banners" />
-                    </Text>
-                    <BlockStack gap="200">
-                      <Text as="h3" variant="headingMd">Banners</Text>
-                      <Text as="p" variant="heading2xl">{dashboardData.summary.banners}</Text>
-                    </BlockStack>
-                  </InlineStack>
-                </BlockStack>
-              </Card>
-
-              {/* Pages Card */}
-              <Card>
-                <BlockStack gap="200">
-                  <InlineStack align="start" gap="200">
-                    <Text as="span">
-                      <Icon source={PageIcon} accessibilityLabel="Pages" />
-                    </Text>
-                    <BlockStack gap="200">
-                      <Text as="h3" variant="headingMd">Pages</Text>
-                      <Text as="p" variant="heading2xl">{dashboardData.summary.pages}</Text>
-                    </BlockStack>
-                  </InlineStack>
-                </BlockStack>
-              </Card>
-            </BlockStack>
-          </Grid.Cell>
         </Grid>
       </BlockStack>
     </Page>
