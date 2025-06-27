@@ -35,7 +35,7 @@ export const getClerkId = async (email: string) => {
   const headers = {
     accept: "application/json",
     "Content-Type": "application/json",
-    Authorization: `Bearer ${import.meta.env.CLERK_SECRET_KEY}`,
+    Authorization: `Bearer sk_test_0WRJUtOd3xWECBqQwyeHoSeNEvVKd5bd2QqK24Ifxz`,
   };
 
   try {
