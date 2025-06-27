@@ -132,11 +132,12 @@ export default function App() {
 
   return (
     <div className={styles.page}>
-
+  
       <header className={styles.header}>
         <div className={styles.headerContainer}>
           <div className={styles.logo}>
             <img src={logo} alt="Logo" className={styles.logoImage} />
+          
           </div>
         </div>
       </header>
