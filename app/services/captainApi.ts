@@ -33,7 +33,7 @@ export const getClerkId = async (email: string, mobileNumber: string, shopOwnerN
   const headers = {
     accept: "application/json",
     "Content-Type": "application/json",
-    Authorization: `Bearer ${import.meta.env.CLERK_SECRET_KEY}`,
+    Authorization: `Bearer ${process.env.CLERK_SECRET_KEY}`,
   };
 
   try {
