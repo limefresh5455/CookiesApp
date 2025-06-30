@@ -1,4 +1,4 @@
-import { json } from "@remix-run/node"; // ✅ add this
+
 
 interface DomainCheckResponse {
   exists: boolean;
@@ -25,21 +25,20 @@ interface statusCheckResponse {
 }
 
 
-export const getClerkId = async (email: string) => {
-  const phone = "+91 1234567884"; // optional: you can pass this dynamically too
-
+export const getClerkId = async (email: string, mobileNumber: string, shopOwnerName: string) => {
+  const phone = mobileNumber || "9884567884";
   if (!email || !phone) {
     return { error: "Email and phone are required" };
   }
-
   const headers = {
     accept: "application/json",
     "Content-Type": "application/json",
-    Authorization: `Bearer sk_test_0WRJUtOd3xWECBqQwyeHoSeNEvVKd5bd2QqK24Ifxz`,
+    Authorization: `Bearer ${import.meta.env.CLERK_SECRET_KEY}`,
   };
 
   try {
     // STEP 1: Try to get existing Clerk user by email
+
     const getResponse = await fetch(
       `https://api.clerk.com/v1/users?email_address=${encodeURIComponent(email)}`,
       {
@@ -50,7 +49,6 @@ export const getClerkId = async (email: string) => {
         },
       }
     );
-
     const existingUsers = await getResponse.json();
 
     if (Array.isArray(existingUsers) && existingUsers.length > 0) {
@@ -64,8 +62,10 @@ export const getClerkId = async (email: string) => {
       method: "POST",
       headers,
       body: JSON.stringify({
+        first_name: shopOwnerName,
+        last_name: shopOwnerName,
         email_address: [email],
-        phone_number: [phone],
+        phone_numbers: [phone],
         skip_password_checks: true,
         skip_password_requirement: true,
       }),
@@ -91,7 +91,7 @@ export const getClerkId = async (email: string) => {
 
 export async function userCounts(userId: string, scannerId: string, from: string, to: string) {
   try {
-    const url = `https://api-dev.cptn.co/bannerTracking/userCount?from=${from}&to=${to}&scannerId=${scannerId}&userId=${userId}`;
+    const url = `${import.meta.env.VITE_API_URL}/bannerTracking/userCount?from=${from}&to=${to}&scannerId=${scannerId}&userId=${userId}`;
     console.log("userCounts API URL:", url); // Debug
     const response = await fetch(url, {
       method: "GET",
@@ -113,7 +113,7 @@ export async function userCounts(userId: string, scannerId: string, from: string
 }
 export async function viewCounts(userId: string, scannerId: string, from: string, to: string) {
   try {
-    const url = `https://api-dev.cptn.co/bannerTracking/count?from=${from}&to=${to}&scannerId=${scannerId}&userId=${userId}`;
+    const url = `${import.meta.env.VITE_API_URL}/bannerTracking/count?from=${from}&to=${to}&scannerId=${scannerId}&userId=${userId}`;
     console.log("viewCounts API URL:", url); // Debug
     const response = await fetch(url, {
       method: "GET",
@@ -136,7 +136,7 @@ export async function viewCounts(userId: string, scannerId: string, from: string
 
 
 export async function statusCounts(userId: string, scannerId: string, from: string, to: string): Promise<statusCheckResponse> {
-  const apiUrl = `https://api-dev.cptn.co/bannerTracking/statusCounts?from=${from}&to=${to}&${scannerId}=45&userId=${userId}`;
+  const apiUrl = `${import.meta.env.VITE_API_URL}/bannerTracking/statusCounts?from=${from}&to=${to}&${scannerId}=45&userId=${userId}`;
   
   try {
     const response = await fetch(apiUrl);
@@ -206,7 +206,6 @@ export async function createVerifiedDomain(data: DomainData): Promise<CreateDoma
       }
       throw new Error(`HTTP error while creating site! status: ${response.status}`);
     }
-
     return await response.json();
   } catch (err) {
     throw err instanceof Error ? err : new Error("Failed to create domain");

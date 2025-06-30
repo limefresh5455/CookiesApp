@@ -10,15 +10,26 @@ import {
   Button,
 } from "@shopify/polaris";
 import { TitleBar } from "@shopify/app-bridge-react";
-import { Form, useNavigation, useActionData } from "@remix-run/react";
+import { Form, useLoaderData, useNavigation, useActionData } from "@remix-run/react";
 import path from "path";
 import { writeFile } from "fs/promises";
-import { json } from "@remix-run/node"; // ✅ add this
+import { json } from "@remix-run/node";
 import pkg from "../../package.json";
 import db from "../db.server";
 import { Copy } from "lucide-react";
 import { authenticate } from "../shopify.server";
 
+
+export const loader = async (args) => {
+  const { session } = await authenticate.admin(args.request);
+  const shop = session.shop;
+
+  const existing = await db.captain.findFirst({ where: { domain: shop } });
+  return json({
+    shop,
+    existingScript: existing?.scriptLink || null,
+  });
+};
 
 
 // export const getClerkId = async () => {
@@ -149,7 +160,6 @@ export const action = async (args) => {
   if (!response.ok) {
     throw new Response("Failed to fetch script", { status: 500 });
   }
-
   const data = await response.text();
   const filePath = path.resolve(`extensions/cookies/assets/${scriptFilename}`);
 
@@ -187,6 +197,7 @@ export const action = async (args) => {
 
 
 export default function InstallPage() {
+  const { shop, existingScript } = useLoaderData();
   const navigation = useNavigation();
   const loading = navigation.state === "submitting";
   const actionData = useActionData();
@@ -200,7 +211,7 @@ export default function InstallPage() {
 
   const cdnUrl = filename
     ? `https://cdn.shopify.com/extensions/${uuid}/${version}/assets/${filename}?v=${timestamp}`
-    : null;
+    : existingScript || null;
   
   // const [email, setEmail] = useState("");
   
@@ -244,6 +255,7 @@ export default function InstallPage() {
                     fullWidth
                     size="slim"
                     loading={loading}
+                    disabled={loading || Boolean(existingScript)}
                   >
                     Generate Script
                   </Button>
@@ -253,52 +265,53 @@ export default function InstallPage() {
           </Card>
         </Layout.Section>
 
-          {script && (
-        <Layout.Section>
-            <Card>
-              <BlockStack gap="200">
-                <Text as="h2" variant="headingSm">
-                  Generated Script
-                </Text>
+        {(script || existingScript) && (
+  <Layout.Section>
+    <Card>
+      <BlockStack gap="200">
+        <Text as="h2" variant="headingSm">
+          Generated Script
+        </Text>
 
-                {cdnUrl && (
-                  <>
-                    <InlineStack align="space-between" blockAlign="center">
-                      <Text as="p" variant="bodySm">
-                        CDN Script Tag:
-                      </Text>
-                    <InlineStack gap="200">
-                      <Button
-                        onClick={handleCopy}
-                        size="slim"
-                        icon={copied ? undefined : <Copy size={14} />}
-                      >
-                        {copied ? "Copied!" : "Copy"}
-                      </Button>
-                      <Button variant="primary" onClick={openThemeEditor}>
-                        Go to Theme Editor
-                      </Button>
-                      </InlineStack>
-                    </InlineStack>
-                    <div
-                      style={{
-                        background: "#f6f6f7",
-                        padding: "12px",
-                        borderRadius: "8px",
-                        fontFamily: "monospace",
-                        fontSize: "12px",
-                        marginTop: "8px",
-                        whiteSpace: "pre-wrap",
-                      }}
+        {(cdnUrl || existingScript) && (
+              <>
+                <InlineStack align="space-between" blockAlign="center">
+                  <Text as="p" variant="bodySm">
+                    CDN Script Tag:
+                  </Text>
+                  <InlineStack gap="200">
+                    <Button
+                      onClick={handleCopy}
+                      size="slim"
+                      icon={copied ? undefined : <Copy size={14} />}
                     >
-                      {`<script src="${cdnUrl}"></script>`}
-                    </div>
-                  </>
-                )}
-              </BlockStack>
-            </Card>
-        </Layout.Section>
-          )}
+                      {copied ? "Copied!" : "Copy"}
+                    </Button>
+                    <Button variant="primary" onClick={openThemeEditor}>
+                      Go to Theme Editor
+                    </Button>
+                  </InlineStack>
+                </InlineStack>
+                <div
+                  style={{
+                    background: "#f6f6f7",
+                    padding: "12px",
+                    borderRadius: "8px",
+                    fontFamily: "monospace",
+                    fontSize: "12px",
+                    marginTop: "8px",
+                    whiteSpace: "pre-wrap",
+                  }}
+                >
+                  {`<script src="${cdnUrl || existingScript}"></script>`}
+                </div>
+              </>
+            )}
+          </BlockStack>
+        </Card>
+      </Layout.Section>
+    )}
+
         {/*<Layout.Section>
            <Card>
             <BlockStack gap="300">

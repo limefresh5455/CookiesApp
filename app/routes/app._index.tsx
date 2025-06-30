@@ -26,6 +26,7 @@ import { getClerkId, createVerifiedDomain, statusCounts, userCounts, viewCounts 
 import { useState, useEffect } from "react";
 
 
+
 // Define the loader data type
 interface LoaderData {
   consentStatus: {
@@ -46,33 +47,23 @@ interface LoaderData {
 
 
 export const loader = async ({ request }: LoaderFunctionArgs) => {
-  const { session } = await authenticate.admin(request);
+  const { session, admin } = await authenticate.admin(request);
   const shop = session.shop;
   const shopID = session.id;
-
+ 
   const existingEmail: any = await db.session.findFirst({
     where: { id: shopID },
   });
 
   if (existingEmail.email == null) {
-    const accessToken = session.accessToken;
-    const response = await fetch(`https://${shop}/admin/api/2024-01/graphql.json`, {
-      method: "POST",
-      headers: {
-        "X-Shopify-Access-Token": `${accessToken}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        query: `
-          query {
-            shop {
-              email
-            }
-          }
-        `,
-      }),
-    });
-
+    const response = await admin.graphql(`
+    query {
+      shop {
+        email
+        shopOwnerName
+      }
+    }
+  `);
     if (!response.ok) {
       console.error("Shopify email fetch failed");
       return new Response("Failed to get store email", { status: 500 });
@@ -82,6 +73,7 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
 
     const email = result?.data?.shop?.email;
     const name = result?.data?.shop?.shopOwnerName;
+    
 
     if (!email) {
       return new Response("Email not found", { status: 400 });
@@ -95,18 +87,37 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
       },
     });
   } else {
-    const existingCaptian: any = await db.captain.findFirst({
-      where: { domain: shop },
-    });
+    // Log email and phone from DB if available
+    console.log('DB Email:', existingEmail.email, 'DB Phone:', existingEmail.phone);
+      const existingCaptian: any = await db.captain.findFirst({
+        where: { domain: shop },
+      });
 
+      const response = await admin.graphql(`
+      query {
+        shop {
+          shopOwnerName
+          billingAddress {
+            phone
+          }
+        }
+      }
+    `);
+    if (!response.ok) {
+      console.error("Shopify email fetch failed");
+      return new Response("Failed to get store email", { status: 500 });
+    }
 
+    const result = await response.json();
+    const phone = result?.data?.shop?.billingAddress?.phone;
+    const shopOwnerName = result?.data?.shop?.shopOwnerName;
+    console.log(existingEmail.email, "existingCaptian", phone, shopOwnerName)
     if (!existingCaptian) {
-      const userData = await getClerkId(existingEmail.email);
-      console.log(userData);
+      const userData = await getClerkId(existingEmail.email, phone, shopOwnerName);
 
       const createData = await createVerifiedDomain({
         domain: shop,
-        userId: userData.clerkId,
+        userId: userData?.clerkId,
         verified: true,
       });
 

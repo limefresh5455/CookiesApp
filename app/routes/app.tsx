@@ -25,7 +25,7 @@ export default function App() {
           Home
         </Link>
         <Link to="/app/install">Install</Link>
-
+        <Link to="/app/remove">Remove</Link>
 
       </NavMenu>
       <Outlet />
