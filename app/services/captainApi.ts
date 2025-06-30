@@ -91,7 +91,7 @@ export const getClerkId = async (email: string, mobileNumber: string, shopOwnerN
 
 export async function userCounts(userId: string, scannerId: string, from: string, to: string) {
   try {
-    const url = `${import.meta.env.VITE_API_URL}/bannerTracking/userCount?from=${from}&to=${to}&scannerId=${scannerId}&userId=${userId}`;
+    const url = `${process.env.VITE_API_URL}/bannerTracking/userCount?from=${from}&to=${to}&scannerId=${scannerId}&userId=${userId}`;
     console.log("userCounts API URL:", url); // Debug
     const response = await fetch(url, {
       method: "GET",
@@ -113,7 +113,7 @@ export async function userCounts(userId: string, scannerId: string, from: string
 }
 export async function viewCounts(userId: string, scannerId: string, from: string, to: string) {
   try {
-    const url = `${import.meta.env.VITE_API_URL}/bannerTracking/count?from=${from}&to=${to}&scannerId=${scannerId}&userId=${userId}`;
+    const url = `${process.env.VITE_API_URL}/bannerTracking/count?from=${from}&to=${to}&scannerId=${scannerId}&userId=${userId}`;
     console.log("viewCounts API URL:", url); // Debug
     const response = await fetch(url, {
       method: "GET",
@@ -136,7 +136,7 @@ export async function viewCounts(userId: string, scannerId: string, from: string
 
 
 export async function statusCounts(userId: string, scannerId: string, from: string, to: string): Promise<statusCheckResponse> {
-  const apiUrl = `${import.meta.env.VITE_API_URL}/bannerTracking/statusCounts?from=${from}&to=${to}&${scannerId}=45&userId=${userId}`;
+  const apiUrl = `${process.env.VITE_API_URL}/bannerTracking/statusCounts?from=${from}&to=${to}&${scannerId}=45&userId=${userId}`;
   
   try {
     const response = await fetch(apiUrl);
@@ -155,7 +155,7 @@ export async function statusCounts(userId: string, scannerId: string, from: stri
 export async function checkDomainExists(userId: string, domain: string): Promise<DomainCheckResponse> {
   try {
     const response = await fetch(
-      `${import.meta.env.VITE_API_URL}/dns/exists?userId=${userId}&domain=${encodeURIComponent(domain)}`
+      `${process.env.VITE_API_URL}/dns/exists?userId=${userId}&domain=${encodeURIComponent(domain)}`
     );
 
     if (!response.ok) {
@@ -181,7 +181,7 @@ export async function checkDomainExists(userId: string, domain: string): Promise
 export async function createVerifiedDomain(data: DomainData): Promise<CreateDomainResponse> {
   try {
     const response = await fetch(
-      `${import.meta.env.VITE_API_URL}/dns/create-verified-domain`,
+      `${process.env.VITE_API_URL}/dns/create-verified-domain`,
       {
         method: "POST",
         headers: {
