@@ -83,10 +83,10 @@ export const action = async (args) => {
   const formData = await args.request.formData();
   const actionType = formData.get("actionType");
 
-
+  const apiKey = import.meta.env.SHOPIFY_API_KEY;
   const {session} = await authenticate.admin(args.request);
   console.log("dataAuth", session)
-  const shop = session.shop
+  const shop = session.shop;
 
 // if (actionType === "clerk") {
 //   const email = formData.get("email");
@@ -137,7 +137,7 @@ export const action = async (args) => {
 
   if (actionType === "script") {
   const EXTENSION_UUID = process.env.EXTENSION_UUID;
-  const apiKey = process.env.SHOPIFY_API_KEY;
+  const apiKey = import.meta.env.SHOPIFY_API_KEY;
   const EXTENSION_VERSION = pkg.version;
 
   const existingUser = await db.captain.findFirst({
@@ -197,7 +197,7 @@ export const action = async (args) => {
 
 
 export default function InstallPage() {
-  const { shop, existingScript } = useLoaderData();
+  const { shop, existingScript, apiKey } = useLoaderData();
   const navigation = useNavigation();
   const loading = navigation.state === "submitting";
   const actionData = useActionData();
@@ -206,8 +206,6 @@ export default function InstallPage() {
   const timestamp = actionData?.timestamp;
   const uuid = actionData?.uuid;
   const version = actionData?.version;
-  const shopName = actionData?.shopName;
-  const apiKey = actionData?.apiKey;
 
   const cdnUrl = filename
     ? `https://cdn.shopify.com/extensions/${uuid}/${version}/assets/${filename}?v=${timestamp}`
@@ -224,7 +222,7 @@ export default function InstallPage() {
   };
 
   const openThemeEditor = () => {
-    const url = `https://${shopName}/admin/themes/current/editor?context=apps&activateAppId=${apiKey}/cookies`;
+    const url = `https://${shop}/admin/themes/current/editor?context=apps&activateAppId=${apiKey}/cookies`;
     window.open(url, "_blank");
   };
   return (
