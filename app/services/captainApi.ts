@@ -16,13 +16,7 @@ interface DomainData {
   verified?: boolean;
 }
 
-interface statusCheckResponse {
-  ALLOWED: number;
-  NO_ACTIVITY: number;
-  PARTIALLY_ALLOWED: number;
-  REJECTED: number;
-  count: number;
-}
+
 
 
 export const getClerkId = async (email: string, mobileNumber: string, shopOwnerName: string) => {
@@ -135,8 +129,8 @@ export async function viewCounts(userId: string, scannerId: string, from: string
 }
 
 
-export async function statusCounts(userId: string, scannerId: string, from: string, to: string): Promise<statusCheckResponse> {
-  const apiUrl = `${process.env.VITE_API_URL}/bannerTracking/statusCounts?from=${from}&to=${to}&${scannerId}=45&userId=${userId}`;
+export async function statusCounts(userId: string, scannerId: string, from: string, to: string){
+  const apiUrl = `${import.meta.env.VITE_API_URL}/bannerTracking/statusCounts?from=${from}&to=${to}&scannerId=${scannerId}&userId=${userId}`;
   
   try {
     const response = await fetch(apiUrl);
