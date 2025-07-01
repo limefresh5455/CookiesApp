@@ -16,7 +16,13 @@ interface DomainData {
   verified?: boolean;
 }
 
-
+interface statusCheckResponse {
+  ALLOWED: number;
+  NO_ACTIVITY: number;
+  PARTIALLY_ALLOWED: number;
+  REJECTED: number;
+  count: number;
+}
 
 
 export const getClerkId = async (email: string, mobileNumber: string, shopOwnerName: string) => {
@@ -129,7 +135,7 @@ export async function viewCounts(userId: string, scannerId: string, from: string
 }
 
 
-export async function statusCounts(userId: string, scannerId: string, from: string, to: string){
+export async function statusCounts(userId: string, scannerId: string, from: string, to: string): Promise<statusCheckResponse> {
   const apiUrl = `${import.meta.env.VITE_API_URL}/bannerTracking/statusCounts?from=${from}&to=${to}&scannerId=${scannerId}&userId=${userId}`;
   
   try {
@@ -149,7 +155,7 @@ export async function statusCounts(userId: string, scannerId: string, from: stri
 export async function checkDomainExists(userId: string, domain: string): Promise<DomainCheckResponse> {
   try {
     const response = await fetch(
-      `${process.env.VITE_API_URL}/dns/exists?userId=${userId}&domain=${encodeURIComponent(domain)}`
+      `${import.meta.env.VITE_API_URL}/dns/exists?userId=${userId}&domain=${encodeURIComponent(domain)}`
     );
 
     if (!response.ok) {
@@ -175,7 +181,7 @@ export async function checkDomainExists(userId: string, domain: string): Promise
 export async function createVerifiedDomain(data: DomainData): Promise<CreateDomainResponse> {
   try {
     const response = await fetch(
-      `${process.env.VITE_API_URL}/dns/create-verified-domain`,
+      `${import.meta.env.VITE_API_URL}/dns/create-verified-domain`,
       {
         method: "POST",
         headers: {
