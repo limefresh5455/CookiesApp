@@ -3,7 +3,7 @@
 client_id = "5a05dd878a10a03fa32cdc622d405090"
 name = "Cookies App"
 handle = "cookiesapp2"
-application_url = "https://nomination-dr-publish-preliminary.trycloudflare.com"
+application_url = "https://assured-gender-million-advanced.trycloudflare.com"
 embedded = true
 
 [build]
@@ -26,7 +26,7 @@ api_version = "2025-04"
 scopes = "write_products, read_content, read_customers,read_orders"
 
 [auth]
-redirect_urls = ["https://nomination-dr-publish-preliminary.trycloudflare.com/auth/callback", "https://nomination-dr-publish-preliminary.trycloudflare.com/auth/shopify/callback", "https://nomination-dr-publish-preliminary.trycloudflare.com/api/auth/callback"]
+redirect_urls = ["https://assured-gender-million-advanced.trycloudflare.com/auth/callback", "https://assured-gender-million-advanced.trycloudflare.com/auth/shopify/callback", "https://assured-gender-million-advanced.trycloudflare.com/api/auth/callback"]
 
 [pos]
 embedded = false
