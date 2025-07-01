@@ -150,7 +150,7 @@ export const action = async (args) => {
   const storeSlug = shop.replace(".myshopify.com", "");
   const scriptFilename = `${storeSlug}-script.js`; // ✅ define filename
 
-  const response = await fetch(`https://api-dev.cptn.co/banner/script?accessToken=${accessToken}`, {
+  const response = await fetch(`${process.env.VITE_API_URL}/banner/script?accessToken=${accessToken}`, {
     method: "GET",
     headers: {
       accept: "application/json",
