@@ -24,10 +24,12 @@ export const loader = async (args) => {
   const { session } = await authenticate.admin(args.request);
   const shop = session.shop;
 
+  const apiKey = import.meta.env.SHOPIFY_API_KEY;
   const existing = await db.captain.findFirst({ where: { domain: shop } });
   return json({
     shop,
     existingScript: existing?.scriptLink || null,
+    apiKey,
   });
 };
 
@@ -83,7 +85,6 @@ export const action = async (args) => {
   const formData = await args.request.formData();
   const actionType = formData.get("actionType");
 
-  const apiKey = import.meta.env.SHOPIFY_API_KEY;
   const {session} = await authenticate.admin(args.request);
   console.log("dataAuth", session)
   const shop = session.shop;
@@ -206,6 +207,7 @@ export default function InstallPage() {
   const timestamp = actionData?.timestamp;
   const uuid = actionData?.uuid;
   const version = actionData?.version;
+  
 
   const cdnUrl = filename
     ? `https://cdn.shopify.com/extensions/${uuid}/${version}/assets/${filename}?v=${timestamp}`
