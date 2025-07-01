@@ -55,7 +55,7 @@
   var CC_MODAL_ID = "cc-modal-cookies-banner";
   var CC_PENDING_COOKIES_KEY = "captainConsentPending";
   var CC_COOKIE_MODAL = "cc_consent";
-  var CC_SERVER_URL = "https://cc-platform-api-prod.fly.dev";
+  var CC_SERVER_URL = "https://api-dev.cptn.co";
   var CC_STANDARD_MODE_ONLY_SETTINGS = "ONLY_SETTINGS";
   var CC_STANDARD_MODE_BANNER_LINEAL = "BANNER_LINEAL";
   var CC_MODES_ALLOWED = [
