@@ -2996,7 +2996,6 @@
       "SI",
       "ES",
       "SE",
-      // EEA countries
       "IS",
       "LI",
       "NO"
@@ -3009,14 +3008,38 @@
         return isGDPRApplicable(window.__ccGeoInfo.countryCode);
       }
       const userLanguage = navigator.language || navigator.userLanguage;
-      if (userLanguage && (userLanguage.startsWith("de") || userLanguage.startsWith("fr") || userLanguage.startsWith("es") || userLanguage.startsWith("it") || userLanguage.startsWith("nl") || userLanguage.startsWith("pl") || userLanguage.startsWith("pt") || userLanguage.startsWith("sv") || userLanguage.startsWith("da") || userLanguage.startsWith("fi") || userLanguage.startsWith("no") || userLanguage.startsWith("is"))) {
+      if ([
+        "de",
+        "fr",
+        "es",
+        "it",
+        "nl",
+        "pl",
+        "pt",
+        "sv",
+        "da",
+        "fi",
+        "no",
+        "is"
+      ].some((lang) => userLanguage.startsWith(lang))) {
         return true;
       }
       const hostname = window.location.hostname.toLowerCase();
-      if (hostname.endsWith(".eu") || hostname.endsWith(".de") || hostname.endsWith(".fr") || hostname.endsWith(".it") || hostname.endsWith(".es") || hostname.endsWith(".nl") || hostname.endsWith(".pl") || hostname.endsWith(".pt") || hostname.endsWith(".se") || hostname.endsWith(".dk") || hostname.endsWith(".fi") || hostname.endsWith(".no") || hostname.endsWith(".is")) {
-        return true;
-      }
-      return false;
+      return [
+        ".eu",
+        ".de",
+        ".fr",
+        ".it",
+        ".es",
+        ".nl",
+        ".pl",
+        ".pt",
+        ".se",
+        ".dk",
+        ".fi",
+        ".no",
+        ".is"
+      ].some((suffix) => hostname.endsWith(suffix));
     } catch (error) {
       warnIfDev("\u274C Error determining GDPR status:", error);
       return false;
@@ -3262,6 +3285,7 @@
         vendorListVersion: parseInt(model.vendorListVersion),
         publisherCC: model.publisherCountryCode,
         purposeOneTreatment: model.purposeOneTreatment,
+        isServiceSpecific: true,
         useNonStandardStacks: model.useNonStandardStacks,
         specialFeatureOptins: model.specialFeatureOptIns ? vectorToEntries(model.specialFeatureOptIns) : {},
         purpose: {
@@ -3365,6 +3389,7 @@
         vendorListVersion: parseInt(gvlInstance?.vendorListVersion || 0),
         publisherCC: "US",
         purposeOneTreatment: false,
+        isServiceSpecific: true,
         useNonStandardStacks: false,
         specialFeatureOptins: {},
         purpose: {

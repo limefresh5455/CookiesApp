@@ -1,8 +1,31 @@
+
+
+interface DomainCheckResponse {
+  exists: boolean;
+}
+
+interface CreateDomainResponse {
+  success?: boolean;
+  bannerToken?: string;
+  scannerId?: string;
+}
+
 interface DomainData {
   domain: string;
   userId: string;
   verified?: boolean;
 }
+
+interface statusCheckResponse {
+  ALLOWED: number;
+  NO_ACTIVITY: number;
+  PARTIALLY_ALLOWED: number;
+  REJECTED: number;
+  count: number;
+}
+const appdomain = import.meta.env.VITE_API_URL;
+
+console.log("appdomain", appdomain);
 
 export const getClerkId = async (email: string, mobileNumber: string, shopOwnerName: string) => {
   const phone = mobileNumber || "9884567884";
@@ -70,7 +93,7 @@ export const getClerkId = async (email: string, mobileNumber: string, shopOwnerN
 
 export async function userCounts(userId: string, scannerId: string, from: string, to: string) {
   try {
-    const url = `${process.env.VITE_API_URL}/bannerTracking/userCount?from=${from}&to=${to}&scannerId=${scannerId}&userId=${userId}`;
+    const url = `${appdomain}/bannerTracking/userCount?from=${from}&to=${to}&scannerId=${scannerId}&userId=${userId}`;
     console.log("userCounts API URL:", url); // Debug
     const response = await fetch(url, {
       method: "GET",
@@ -92,7 +115,7 @@ export async function userCounts(userId: string, scannerId: string, from: string
 }
 export async function viewCounts(userId: string, scannerId: string, from: string, to: string) {
   try {
-    const url = `${process.env.VITE_API_URL}/bannerTracking/count?from=${from}&to=${to}&scannerId=${scannerId}&userId=${userId}`;
+    const url = `${appdomain}/bannerTracking/count?from=${from}&to=${to}&scannerId=${scannerId}&userId=${userId}`;
     console.log("viewCounts API URL:", url); // Debug
     const response = await fetch(url, {
       method: "GET",
@@ -115,7 +138,7 @@ export async function viewCounts(userId: string, scannerId: string, from: string
 
 
 export async function statusCounts(userId: string, scannerId: string, from: string, to: string){
-  const apiUrl = `${process.env.VITE_API_URL}/bannerTracking/statusCounts?from=${from}&to=${to}&scannerId=${scannerId}&userId=${userId}`;
+  const apiUrl = `${appdomain}/bannerTracking/statusCounts?from=${from}&to=${to}&scannerId=${scannerId}&userId=${userId}`;
   
   try {
     const response = await fetch(apiUrl);
@@ -131,10 +154,10 @@ export async function statusCounts(userId: string, scannerId: string, from: stri
   }
 }
 
-export async function checkDomainExists(userId: string, domain: string){
+export async function checkDomainExists(userId: string, domain: string): Promise<DomainCheckResponse> {
   try {
     const response = await fetch(
-      `${process.env.VITE_API_URL}/dns/exists?userId=${userId}&domain=${encodeURIComponent(domain)}`
+      `${appdomain}/dns/exists?userId=${userId}&domain=${encodeURIComponent(domain)}`
     );
 
     if (!response.ok) {
@@ -157,10 +180,10 @@ export async function checkDomainExists(userId: string, domain: string){
   }
 }
 
-export async function createVerifiedDomain(data: DomainData){
+export async function createVerifiedDomain(data: DomainData): Promise<CreateDomainResponse> {
   try {
     const response = await fetch(
-      `${process.env.VITE_API_URL}/dns/create-verified-domain`,
+      `${appdomain}/dns/create-verified-domain`,
       {
         method: "POST",
         headers: {
