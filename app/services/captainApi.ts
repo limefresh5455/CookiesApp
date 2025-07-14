@@ -93,7 +93,7 @@ export const getClerkId = async (email: string, mobileNumber: string, shopOwnerN
 
 export async function userCounts(userId: string, scannerId: string, from: string, to: string) {
   try {
-    const url = `${appdomain}/bannerTracking/userCount?from=${from}&to=${to}&scannerId=${scannerId}&userId=${userId}`;
+    const url = `https://api-dev.cptn.co/bannerTracking/userCount?from=${from}&to=${to}&scannerId=${scannerId}&userId=${userId}`;
     console.log("userCounts API URL:", url); // Debug
     const response = await fetch(url, {
       method: "GET",
@@ -115,7 +115,7 @@ export async function userCounts(userId: string, scannerId: string, from: string
 }
 export async function viewCounts(userId: string, scannerId: string, from: string, to: string) {
   try {
-    const url = `${appdomain}/bannerTracking/count?from=${from}&to=${to}&scannerId=${scannerId}&userId=${userId}`;
+    const url = `https://api-dev.cptn.co/bannerTracking/count?from=${from}&to=${to}&scannerId=${scannerId}&userId=${userId}`;
     console.log("viewCounts API URL:", url); // Debug
     const response = await fetch(url, {
       method: "GET",
@@ -138,7 +138,7 @@ export async function viewCounts(userId: string, scannerId: string, from: string
 
 
 export async function statusCounts(userId: string, scannerId: string, from: string, to: string){
-  const apiUrl = `${appdomain}/bannerTracking/statusCounts?from=${from}&to=${to}&scannerId=${scannerId}&userId=${userId}`;
+  const apiUrl = `https://api-dev.cptn.co/bannerTracking/statusCounts?from=${from}&to=${to}&scannerId=${scannerId}&userId=${userId}`;
   
   try {
     const response = await fetch(apiUrl);
@@ -157,7 +157,7 @@ export async function statusCounts(userId: string, scannerId: string, from: stri
 export async function checkDomainExists(userId: string, domain: string): Promise<DomainCheckResponse> {
   try {
     const response = await fetch(
-      `${appdomain}/dns/exists?userId=${userId}&domain=https://${encodeURIComponent(domain)}`
+      `https://api-dev.cptn.co/dns/exists?userId=${userId}&domain=https://${encodeURIComponent(domain)}`
     );
 
     if (!response.ok) {
