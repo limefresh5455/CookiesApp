@@ -1,8 +1,7 @@
-<script defer src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script defer src="{{ "delete-cookies.js" | asset_url }}"></script>
 {% schema %}
 {
   "name": "Delete Cookies",
-  "target": "head",
-  "javascript": "delete-cookies.js",
+  "target": "body"
 }
 {% endschema %}
