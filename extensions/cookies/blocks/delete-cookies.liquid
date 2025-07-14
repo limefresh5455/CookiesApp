@@ -1,8 +1,7 @@
-<script src="{{ 'delete-cookies.js' | asset_url }}" defer></script>
 {% schema %}
 {
   "name": "Delete Cookies",
-  "target": "body"
+  "target": "head",
+  "javascript": "delete-cookies.js",
 }
 {% endschema %}
-
