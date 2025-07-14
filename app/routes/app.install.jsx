@@ -29,6 +29,7 @@ export const loader = async (args) => {
   return json({
     shop,
     existingScript: existing?.scriptLink || null,
+    existingName: existing?.scriptName || null,
     apiKey,
   });
 };
@@ -197,7 +198,7 @@ export const action = async (args) => {
 
 
 export default function InstallPage() {
-  const { shop, existingScript, apiKey } = useLoaderData();
+  const { shop, existingScript, apiKey,existingName } = useLoaderData();
   const navigation = useNavigation();
   const loading = navigation.state === "submitting";
   const actionData = useActionData();
@@ -226,6 +227,7 @@ export default function InstallPage() {
     const url = `https://${shop}/admin/themes/current/editor?context=apps&activateAppId=${apiKey}/cookies`;
     window.open(url, "_blank");
   };
+  console.log('filename', filename);
   return (
     <Page>
       <TitleBar title="Install" />
@@ -240,7 +242,7 @@ export default function InstallPage() {
               <Text as="p" variant="bodyMd">
                 This embed injects your storefront script file:{" "}
                 <strong>
-                  <code>app.js</code>
+                  <code>{script || existingScript ? existingName : "app.js"}</code>
                 </strong>
                 . You can enable or disable it below.
               </Text>

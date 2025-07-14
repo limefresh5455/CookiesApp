@@ -55,7 +55,7 @@
   var CC_MODAL_ID = "cc-modal-cookies-banner";
   var CC_PENDING_COOKIES_KEY = "captainConsentPending";
   var CC_COOKIE_MODAL = "cc_consent";
-  var CC_SERVER_URL = "https://cc-platform-api-prod.fly.dev";
+  var CC_SERVER_URL = "https://api-dev.cptn.co";
   var CC_STANDARD_MODE_ONLY_SETTINGS = "ONLY_SETTINGS";
   var CC_STANDARD_MODE_BANNER_LINEAL = "BANNER_LINEAL";
   var CC_MODES_ALLOWED = [
@@ -70,7 +70,7 @@
 
   // scripts/templates/services.js
   async function loadBannerData() {
-    const paramToken = "04e608b2-ea6e-478c-b356-41cfc7632197";
+    const paramToken = "2ade62ed-7a3c-4613-86ac-4f7543b8d43e";
     const accessToken = paramToken || document.currentScript.getAttribute("access-token");
     const response = await fetch(
       `${CC_SERVER_URL}/banner/banner-token?access-token=${accessToken}`
@@ -2916,6 +2916,29 @@
     });
     return entries;
   }, "vectorToEntries");
+  var setLegitimateInterestFlags = /* @__PURE__ */ __name((tcModel, gvl, accepted) => {
+    const purposesNotAllowedForLegitimateInterest = [1, 3, 4, 5, 6];
+    logIfDev("\u{1F512} Setting legitimate interest flags for TCF V2 compliance:", {
+      accepted,
+      purposesNotAllowedForLegitimateInterest,
+      totalPurposes: Object.keys(gvl.purposes).length
+    });
+    for (const purposeId of Object.keys(gvl.purposes)) {
+      const id = Number(purposeId);
+      tcModel.purposeConsents.set(id, accepted);
+      if (purposesNotAllowedForLegitimateInterest.includes(id)) {
+        tcModel.purposeLegitimateInterests.set(id, false);
+        logIfDev(
+          `\u{1F512} Purpose ${id}: Consent=${accepted}, LegitimateInterest=false (TCF V2 compliance)`
+        );
+      } else {
+        tcModel.purposeLegitimateInterests.set(id, accepted);
+        logIfDev(
+          `\u{1F512} Purpose ${id}: Consent=${accepted}, LegitimateInterest=${accepted}`
+        );
+      }
+    }
+  }, "setLegitimateInterestFlags");
   var decode = null;
   var initDecode = /* @__PURE__ */ __name(() => {
     if (!decode) {
@@ -3167,11 +3190,7 @@
       tcModel.publisherCountryCode = "US";
       tcModel.purposeOneTreatment = false;
       tcModel.vendorListVersion = gvl.vendorListVersion;
-      for (const purposeId of Object.keys(gvl.purposes)) {
-        const id = Number(purposeId);
-        tcModel.purposeConsents.set(id, accepted);
-        tcModel.purposeLegitimateInterests.set(id, accepted);
-      }
+      setLegitimateInterestFlags(tcModel, gvl, accepted);
       for (const vendorId of Object.keys(gvl.vendors)) {
         const id = Number(vendorId);
         tcModel.vendorConsents.set(id, accepted);
@@ -3213,6 +3232,24 @@
       if (!decodedModel.cmpId || !decodedModel.vendorListVersion) {
         return { valid: false, error: "TCString missing required fields" };
       }
+      const purposesNotAllowedForLegitimateInterest = [1, 3, 4, 5, 6];
+      let complianceIssues = [];
+      for (const purposeId of purposesNotAllowedForLegitimateInterest) {
+        if (decodedModel.purposeLegitimateInterests.has(purposeId)) {
+          const hasLegitimateInterest = decodedModel.purposeLegitimateInterests.get(purposeId);
+          if (hasLegitimateInterest === true) {
+            complianceIssues.push(
+              `Purpose ${purposeId} has legitimate interest set to true (not allowed in TCF V2)`
+            );
+          }
+        }
+      }
+      if (complianceIssues.length > 0) {
+        return {
+          valid: false,
+          error: `TCF V2 compliance issues: ${complianceIssues.join(", ")}`
+        };
+      }
       return { valid: true, model: decodedModel };
     } catch (error) {
       return { valid: false, error: error.message };
@@ -3244,11 +3281,7 @@
             newTcModel.publisherCountryCode = "US";
             newTcModel.purposeOneTreatment = false;
             newTcModel.vendorListVersion = gvlInstance.vendorListVersion;
-            for (const purposeId of Object.keys(gvlInstance.purposes)) {
-              const id = Number(purposeId);
-              newTcModel.purposeConsents.set(id, false);
-              newTcModel.purposeLegitimateInterests.set(id, false);
-            }
+            setLegitimateInterestFlags(newTcModel, gvlInstance, false);
             for (const vendorId of Object.keys(gvlInstance.vendors)) {
               const id = Number(vendorId);
               newTcModel.vendorConsents.set(id, false);
@@ -3347,11 +3380,7 @@
             tcModel.purposeOneTreatment = false;
             tcModel.vendorListVersion = gvlInstance.vendorListVersion;
             if (gvlInstance.purposes) {
-              for (const purposeId of Object.keys(gvlInstance.purposes)) {
-                const id = Number(purposeId);
-                tcModel.purposeConsents.set(id, false);
-                tcModel.purposeLegitimateInterests.set(id, false);
-              }
+              setLegitimateInterestFlags(tcModel, gvlInstance, false);
             }
             if (gvlInstance.vendors) {
               for (const vendorId of Object.keys(gvlInstance.vendors)) {
@@ -3541,11 +3570,7 @@
               tcModel.publisherCountryCode = "US";
               tcModel.purposeOneTreatment = false;
               tcModel.vendorListVersion = gvl.vendorListVersion;
-              for (const purposeId of Object.keys(gvl.purposes)) {
-                const id = Number(purposeId);
-                tcModel.purposeConsents.set(id, false);
-                tcModel.purposeLegitimateInterests.set(id, false);
-              }
+              setLegitimateInterestFlags(tcModel, gvl, false);
               for (const vendorId of Object.keys(gvl.vendors)) {
                 const id = Number(vendorId);
                 tcModel.vendorConsents.set(id, false);
@@ -3676,11 +3701,7 @@
                 newTcModel.publisherCountryCode = "US";
                 newTcModel.purposeOneTreatment = false;
                 newTcModel.vendorListVersion = gvlInstance.vendorListVersion;
-                for (const purposeId of Object.keys(gvlInstance.purposes)) {
-                  const id = Number(purposeId);
-                  newTcModel.purposeConsents.set(id, false);
-                  newTcModel.purposeLegitimateInterests.set(id, false);
-                }
+                setLegitimateInterestFlags(newTcModel, gvlInstance, false);
                 for (const vendorId of Object.keys(gvlInstance.vendors)) {
                   const id = Number(vendorId);
                   newTcModel.vendorConsents.set(id, false);
@@ -3788,11 +3809,7 @@
               tcModel.publisherCountryCode = "US";
               tcModel.purposeOneTreatment = false;
               tcModel.vendorListVersion = gvlInstance.vendorListVersion;
-              for (const purposeId of Object.keys(gvlInstance.purposes)) {
-                const id = Number(purposeId);
-                tcModel.purposeConsents.set(id, false);
-                tcModel.purposeLegitimateInterests.set(id, false);
-              }
+              setLegitimateInterestFlags(tcModel, gvlInstance, false);
               for (const vendorId of Object.keys(gvlInstance.vendors)) {
                 const id = Number(vendorId);
                 tcModel.vendorConsents.set(id, false);
@@ -3823,11 +3840,7 @@
             tcModel.publisherCountryCode = "US";
             tcModel.purposeOneTreatment = false;
             tcModel.vendorListVersion = gvlInstance.vendorListVersion;
-            for (const purposeId of Object.keys(gvlInstance.purposes)) {
-              const id = Number(purposeId);
-              tcModel.purposeConsents.set(id, false);
-              tcModel.purposeLegitimateInterests.set(id, false);
-            }
+            setLegitimateInterestFlags(tcModel, gvlInstance, false);
             for (const vendorId of Object.keys(gvlInstance.vendors)) {
               const id = Number(vendorId);
               tcModel.vendorConsents.set(id, false);
@@ -3903,11 +3916,7 @@
       tcModel.publisherCountryCode = "US";
       tcModel.purposeOneTreatment = false;
       tcModel.vendorListVersion = gvl.vendorListVersion;
-      for (const purposeId of Object.keys(gvl.purposes)) {
-        const id = Number(purposeId);
-        tcModel.purposeConsents.set(id, false);
-        tcModel.purposeLegitimateInterests.set(id, false);
-      }
+      setLegitimateInterestFlags(tcModel, gvl, false);
       for (const vendorId of Object.keys(gvl.vendors)) {
         const id = Number(vendorId);
         tcModel.vendorConsents.set(id, false);

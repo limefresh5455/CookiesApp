@@ -157,7 +157,7 @@ export async function statusCounts(userId: string, scannerId: string, from: stri
 export async function checkDomainExists(userId: string, domain: string): Promise<DomainCheckResponse> {
   try {
     const response = await fetch(
-      `${appdomain}/dns/exists?userId=${userId}&domain=${encodeURIComponent(domain)}`
+      `${appdomain}/dns/exists?userId=${userId}&domain=https://${encodeURIComponent(domain)}`
     );
 
     if (!response.ok) {

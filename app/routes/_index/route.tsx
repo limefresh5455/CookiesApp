@@ -82,7 +82,7 @@ export const action = async (args: ActionFunctionArgs) => {
       return redirect(redirectUrl);
     } else {
       const createData = await createVerifiedDomain({
-        domain: domain,
+        domain: `https://${domain}`,
         userId: userIdString,
         verified: true,
       });

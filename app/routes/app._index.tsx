@@ -116,7 +116,7 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
       const userData = await getClerkId(existingEmail.email, phone, shopOwnerName);
 
       const createData = await createVerifiedDomain({
-        domain: shop,
+        domain: `https://${shop}`,
         userId: userData?.clerkId,
         verified: true,
       });
@@ -308,7 +308,6 @@ export default function DashboardPage() {
     const result = getDateRanges(rangeType);
     setSelectedRange(rangeType);
     setResults(result);
-    setChangeText(rangeType);
     if (!result || !userId || !scannerId) return;
     try {
       
@@ -331,6 +330,7 @@ export default function DashboardPage() {
           totalViewsThisWeek,
         },
       });
+      setChangeText(rangeType);
     } catch (error) {
       console.error("Failed to fetch analytics data:", error);
     }
