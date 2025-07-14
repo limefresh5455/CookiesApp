@@ -183,7 +183,7 @@ export async function checkDomainExists(userId: string, domain: string): Promise
 export async function createVerifiedDomain(data: DomainData): Promise<CreateDomainResponse> {
   try {
     const response = await fetch(
-      `${appdomain}/dns/create-verified-domain`,
+      `https://api-dev.cptn.co/dns/create-verified-domain`,
       {
         method: "POST",
         headers: {
