@@ -2,9 +2,7 @@ import type { LoaderFunctionArgs, ActionFunctionArgs } from "@remix-run/node";
 import { redirect, json } from "@remix-run/node";
 import { Form, useLoaderData, useActionData, useNavigation } from "@remix-run/react";
 import { clerkClient } from "@clerk/clerk-sdk-node";
-
 import { login } from "../../shopify.server";
-
 import styles from "./styles.module.css";
 import { getAuth } from "@clerk/remix/ssr.server";
 import { checkDomainExists, createVerifiedDomain } from "app/services/captainApi";
@@ -25,16 +23,10 @@ export const loader = async (args: LoaderFunctionArgs) => {
   }
 
   const user = await clerkClient.users.getUser(userId);
-  const email: string = user.emailAddresses[0]?.emailAddress || "";
   const fullName: string = user.fullName || "User";
-
-  console.log("userId:", userId);
-  console.log("email:", email);
 
   return {
     showForm: Boolean(login),
-    userId,
-    email,
     fullName,
   };
 };
@@ -60,21 +52,14 @@ export const action = async (args: ActionFunctionArgs) => {
   const userIdString = String(userId);
 
   try {
-    console.log("Domain:", domain, "Type:", typeof domain);
-    console.log("UserId:", userIdString, "Type:", typeof userIdString);
 
     const checkData = await checkDomainExists(userIdString, domain);
-    console.log("Site exists response:", checkData);
-
     const exists = checkData.exists;
-
     const existingUser = await db.captain.findUnique({
       where: {
         userId: userIdString,
       },
     });
-    
-    console.log("existingUser", existingUser)
 
     if (exists && existingUser) {
       const url = new URL(request.url);
@@ -86,8 +71,6 @@ export const action = async (args: ActionFunctionArgs) => {
         userId: userIdString,
         verified: true,
       });
-
-      console.log("object", userIdString)
 
       await db.captain.upsert({
         where: {
@@ -125,7 +108,7 @@ export const action = async (args: ActionFunctionArgs) => {
 };
 
 export default function App() {
-  const { showForm, userId, email, fullName } = useLoaderData<typeof loader>();
+  const { showForm, fullName } = useLoaderData<typeof loader>();
   const actionData = useActionData<typeof action>();
   const navigation = useNavigation();
 

@@ -21,12 +21,9 @@ export default function App() {
   return (
     <AppProvider isEmbeddedApp apiKey={apiKey}>
       <NavMenu>
-        <Link to="/app" rel="home">
-          Home
-        </Link>
-        <Link to="/app/install">Install</Link>
+        <Link to="/app" rel="home">Home</Link>
+        <Link to="/app/install">Installation Script</Link>
         <Link to="/app/remove-cookies">Remove Cookies</Link>
-
       </NavMenu>
       <Outlet />
     </AppProvider>

@@ -9,23 +9,19 @@ import {
   Icon,
   ButtonGroup,
 } from "@shopify/polaris";
-import { TitleBar } from "@shopify/app-bridge-react";
-import { useLoaderData } from "@remix-run/react";
-import type { json, LoaderFunctionArgs } from "@remix-run/node";
-import { authenticate } from "../shopify.server";
-
-
 import {
   CheckCircleIcon,
   MinusCircleIcon,
   XCircleIcon,
   QuestionCircleIcon
 } from '@shopify/polaris-icons';
+import { TitleBar } from "@shopify/app-bridge-react";
+import { useLoaderData } from "@remix-run/react";
+import type { json, LoaderFunctionArgs } from "@remix-run/node";
+import { authenticate } from "../shopify.server";
 import db from "../db.server";
 import { getClerkId, createVerifiedDomain, statusCounts, userCounts, viewCounts } from "../services/captainApi";
-import { useState, useEffect } from "react";
-
-
+import { useState } from "react";
 
 // Define the loader data type
 interface LoaderData {
@@ -50,7 +46,7 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
   const { session, admin } = await authenticate.admin(request);
   const shop = session.shop;
   const shopID = session.id;
- 
+
   const existingEmail: any = await db.session.findFirst({
     where: { id: shopID },
   });
@@ -71,29 +67,30 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
 
     const result = await response.json();
 
-    const email = result?.data?.shop?.email;
-    const name = result?.data?.shop?.shopOwnerName;
-    
+    const shopData = result?.data?.shop;
 
-    if (!email) {
-      return new Response("Email not found", { status: 400 });
+    if (!shopData || !shopData.email || !shopData.shopOwnerName) {
+      return new Response("Email or shop owner name not found", { status: 400 });
     }
+
+    const email = shopData.email.trim();
+    const name = shopData.shopOwnerName.trim();
+
     // 🔹 2. Update in your custom `Captain` session table
     await db.session.update({
-      where: { id: shopID }, // make sure this is unique or indexed
-      data: {
-        email: email,
-        firstName: name,
-      },
-    });
-  } else {
-    // Log email and phone from DB if available
-    console.log('DB Email:', existingEmail.email, 'DB Phone:', existingEmail.phone);
-      const existingCaptian: any = await db.captain.findFirst({
-        where: { domain: shop },
+        where: { id: shopID }, // make sure this is unique or indexed
+        data: {
+          email: email,
+          firstName: name,
+        },
       });
+    } else {
+    // Log email and phone from DB if available
+    const existingCaptian: any = await db.captain.findFirst({
+      where: { domain: shop },
+    });
 
-      const response = await admin.graphql(`
+    const response = await admin.graphql(`
       query {
         shop {
           shopOwnerName
@@ -109,18 +106,23 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
     }
 
     const result = await response.json();
-    const phone = result?.data?.shop?.billingAddress?.phone;
-    const shopOwnerName = result?.data?.shop?.shopOwnerName;
-    console.log(existingEmail.email, "existingCaptian", phone, shopOwnerName)
+    const shopData = result?.data?.shop;
+    const billingPhone = shopData?.billingAddress?.phone;
+    const shopOwnerName = shopData?.shopOwnerName;
+
+    if (!shopOwnerName) {
+      return new Response("Shop owner name not found", { status: 400 });
+    }
+
     if (!existingCaptian) {
-      const userData = await getClerkId(existingEmail.email, phone, shopOwnerName);
+      const userData = await getClerkId(existingEmail.email, billingPhone, shopOwnerName);
 
       const createData = await createVerifiedDomain({
         domain: `https://${shop}`,
         userId: userData?.clerkId,
         verified: true,
       });
-
+      console.log("Create Data:", createData);
       await db.captain.upsert({
         where: {
           userId: userData.clerkId,
@@ -143,23 +145,23 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
       });
     }
   }
-  
+
   const existingStatusData: any = await db.captain.findFirst({
     where: { domain: shop },
   });
 
   const from = new Date(Date.now() - 6 * 24 * 60 * 60 * 1000).toLocaleDateString('en-US', {
-  month: '2-digit',
-  day: '2-digit',
-  year: 'numeric'
+    month: '2-digit',
+    day: '2-digit',
+    year: 'numeric'
   }).replace(/\//g, '-');
 
   const to = new Date().toLocaleDateString('en-US', {
-  month: '2-digit',
-  day: '2-digit',
-  year: 'numeric'
+    month: '2-digit',
+    day: '2-digit',
+    year: 'numeric'
   }).replace(/\//g, '-');
-  
+
   let statusData = { ALLOWED: 0, NO_ACTIVITY: 0, PARTIALLY_ALLOWED: 0, REJECTED: 0 };
   try {
     statusData = await statusCounts(existingStatusData.userId, existingStatusData.scannerId, from, to);
@@ -168,7 +170,7 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
     console.error("Failed to fetch status counts:", error);
   }
 
-  
+
   let totalViewsThisWeek = 0;
   try {
     if (existingStatusData) {
@@ -236,7 +238,7 @@ export default function DashboardPage() {
   const today = new Date();
 
   // Helper function to format date as DD-MM-YYYY
-  const formatDate = (date:any) => {
+  const formatDate = (date: any) => {
     const day = String(date.getDate()).padStart(2, '0');
     const month = String(date.getMonth() + 1).padStart(2, '0');
     const year = date.getFullYear();
@@ -244,13 +246,13 @@ export default function DashboardPage() {
   };
 
   // Helper function to calculate days between two dates
-  const calculateDays = (startDate:any, endDate:any) => {
+  const calculateDays = (startDate: any, endDate: any) => {
     const oneDay = 24 * 60 * 60 * 1000;
     return Math.round((endDate - startDate) / oneDay) + 1;
   };
 
   // Main function to get date ranges
-  const getDateRanges = (rangeType:any) => {
+  const getDateRanges = (rangeType: any) => {
     const today = new Date();
     let startDate, endDate, dayCount;
 
@@ -310,11 +312,11 @@ export default function DashboardPage() {
     setResults(result);
     if (!result || !userId || !scannerId) return;
     try {
-      
+
       const statusData = await statusCounts(userId, scannerId, result.start, result.end);
       const userCountData = await userCounts(userId, scannerId, result.start, result.end);
       const viewCountData = await viewCounts(userId, scannerId, result.start, result.end);
-      
+
       const totalUsersThisWeek = userCountData?.reduce((sum: number, item: { count: number }) => sum + item.count, 0) || 0;
       const totalViewsThisWeek = viewCountData?.reduce((sum: number, item: { count: number }) => sum + item.count, 0) || 0;
 
@@ -336,19 +338,8 @@ export default function DashboardPage() {
     }
   };
 
-    
-  const renderTrendIcon = (trend: "up" | "down" | "flat") => {
-    switch (trend) {
-      case "up":
-        return <Text as="span" tone="success" visuallyHidden>Up</Text>;
-      case "down":
-        return <Text as="span" tone="critical" visuallyHidden>Down</Text>;
-      case "flat":
-        return <Text as="span" tone="subdued" visuallyHidden>No change</Text>;
-      default:
-        return null;
-    }
-  };
+
+
 
   return (
     <Page fullWidth>

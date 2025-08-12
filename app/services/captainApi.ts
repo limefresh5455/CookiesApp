@@ -1,5 +1,3 @@
-
-
 interface DomainCheckResponse {
   exists: boolean;
 }
@@ -25,7 +23,26 @@ interface statusCheckResponse {
 }
 const appdomain = import.meta.env.VITE_API_URL;
 
-console.log("appdomain", appdomain);
+export async function getScript(accessToken: string) {
+  if (!accessToken) {
+    throw new Response("Access token is required", { status: 400 });
+  }
+
+  const response = await fetch(`${process.env.VITE_API_URL}/banner/script?accessToken=${accessToken}`, {
+    method: "GET",
+    headers: {
+      accept: "application/json",
+    },
+  });
+
+  if (!response.ok) {
+    throw new Response("Failed to fetch script", { status: 500 });
+  }
+
+  const data = await response.text(); // return pure JS file
+  return data;
+}
+
 
 export const getClerkId = async (email: string, mobileNumber: string, shopOwnerName: string) => {
   const phone = mobileNumber || "9884567884";
@@ -42,7 +59,7 @@ export const getClerkId = async (email: string, mobileNumber: string, shopOwnerN
     // STEP 1: Try to get existing Clerk user by email
 
     const getResponse = await fetch(
-      `https://api.clerk.com/v1/users?email_address=${encodeURIComponent(email)}`,
+      `${process.env.CLERK_API_URL}/v1/users?email_address=${encodeURIComponent(email)}`,
       {
         method: "GET",
         headers: {
@@ -60,7 +77,7 @@ export const getClerkId = async (email: string, mobileNumber: string, shopOwnerN
     }
 
     // STEP 2: If not found, create new Clerk user
-    const createResponse = await fetch("https://api.clerk.com/v1/users", {
+    const createResponse = await fetch(`${import.meta.env.CLERK_API_URL}/v1/users`, {
       method: "POST",
       headers,
       body: JSON.stringify({
@@ -93,7 +110,7 @@ export const getClerkId = async (email: string, mobileNumber: string, shopOwnerN
 
 export async function userCounts(userId: string, scannerId: string, from: string, to: string) {
   try {
-    const url = `https://api-dev.cptn.co/bannerTracking/userCount?from=${from}&to=${to}&scannerId=${scannerId}&userId=${userId}`;
+    const url = `${appdomain}/bannerTracking/userCount?from=${from}&to=${to}&scannerId=${scannerId}&userId=${userId}`;
     console.log("userCounts API URL:", url); // Debug
     const response = await fetch(url, {
       method: "GET",
@@ -115,7 +132,7 @@ export async function userCounts(userId: string, scannerId: string, from: string
 }
 export async function viewCounts(userId: string, scannerId: string, from: string, to: string) {
   try {
-    const url = `https://api-dev.cptn.co/bannerTracking/count?from=${from}&to=${to}&scannerId=${scannerId}&userId=${userId}`;
+    const url = `${appdomain}/bannerTracking/count?from=${from}&to=${to}&scannerId=${scannerId}&userId=${userId}`;
     console.log("viewCounts API URL:", url); // Debug
     const response = await fetch(url, {
       method: "GET",
@@ -138,7 +155,7 @@ export async function viewCounts(userId: string, scannerId: string, from: string
 
 
 export async function statusCounts(userId: string, scannerId: string, from: string, to: string){
-  const apiUrl = `https://api-dev.cptn.co/bannerTracking/statusCounts?from=${from}&to=${to}&scannerId=${scannerId}&userId=${userId}`;
+  const apiUrl = `${appdomain}/bannerTracking/statusCounts?from=${from}&to=${to}&scannerId=${scannerId}&userId=${userId}`;
   
   try {
     const response = await fetch(apiUrl);
@@ -157,7 +174,7 @@ export async function statusCounts(userId: string, scannerId: string, from: stri
 export async function checkDomainExists(userId: string, domain: string): Promise<DomainCheckResponse> {
   try {
     const response = await fetch(
-      `https://api-dev.cptn.co/dns/exists?userId=${userId}&domain=https://${encodeURIComponent(domain)}`
+      `${appdomain}/dns/exists?userId=${userId}&domain=https://${encodeURIComponent(domain)}`
     );
 
     if (!response.ok) {
@@ -183,7 +200,7 @@ export async function checkDomainExists(userId: string, domain: string): Promise
 export async function createVerifiedDomain(data: DomainData): Promise<CreateDomainResponse> {
   try {
     const response = await fetch(
-      `https://api-dev.cptn.co/dns/create-verified-domain`,
+      `${appdomain}/dns/create-verified-domain`,
       {
         method: "POST",
         headers: {

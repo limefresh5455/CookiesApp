@@ -5,7 +5,6 @@ import {
   Button,
   Layout,
   BlockStack,
-  Frame,
 } from '@shopify/polaris';
 import { TitleBar } from "@shopify/app-bridge-react";
 import { useLoaderData } from "@remix-run/react";
@@ -16,21 +15,20 @@ import { authenticate } from "../shopify.server";
 export const loader = async ({ request }: LoaderFunctionArgs) => {
   const { session } = await authenticate.admin(request);
   const shop = session.shop;
-
-  const apiKey = process.env.SHOPIFY_API_KEY || "";
-  return json({ shop, apiKey });
+  const apiKey = process.env.SHOPIFY_API_KEY;
+  const openEditor = `https://${shop}/admin/themes/current/editor?context=apps&activateAppId=${apiKey}/delete-cookies`;
+  return json({ openEditor });
 };
 
 export default function CookieTable() {
-  const { shop, apiKey } = useLoaderData<{ shop: string; apiKey: string }>();
+  const { openEditor } = useLoaderData<{ openEditor: string }>();
 
   const openThemeEditor = () => {
-    const url = `https://${shop}/admin/themes/current/editor?context=apps&activateAppId=${apiKey}/delete-cookies`;
+    const url = openEditor;
     window.open(url, "_blank");
   };
 
   return (
-    <Frame>
       <Page>
         <TitleBar title="Remove Cookies" />
         <Layout>
@@ -58,6 +56,5 @@ export default function CookieTable() {
           </Layout.Section>
         </Layout>
       </Page>
-    </Frame>
   );
 }
