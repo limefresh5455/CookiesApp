@@ -55,7 +55,7 @@
   var CC_MODAL_ID = "cc-modal-cookies-banner";
   var CC_PENDING_COOKIES_KEY = "captainConsentPending";
   var CC_COOKIE_MODAL = "cc_consent";
-  var CC_SERVER_URL = "https://api-dev.cptn.co";
+  var CC_SERVER_URL = "https://cc-platform-api-prod.fly.dev";
   var CC_STANDARD_MODE_ONLY_SETTINGS = "ONLY_SETTINGS";
   var CC_STANDARD_MODE_BANNER_LINEAL = "BANNER_LINEAL";
   var CC_MODES_ALLOWED = [
@@ -65,15 +65,55 @@
   var CC_MODE_DO_NOT_SELL_PERSONAL_INFO = "DO_NOT_SELL_PERSONAL_INFORMATION";
   var CC_MODAL_ID_SETTINGS = "cc-modal-cookies-banner-settings";
   var CC_OVERLAY_ID = "captain-compliance-modal-overlay";
+  var CC_USER_LOCATION = "cc-modal-user-location";
   var IS_DEV = true;
   var IS_PROD = false;
+
+  // scripts/templates/utils.js
+  function getCountryFromCookie() {
+    if (typeof document === "undefined") return null;
+    const cookies = document.cookie.split(";");
+    for (const cookie of cookies) {
+      const [key, value] = cookie.trim().split("=");
+      if (key && value && key.toLowerCase().includes("cf-ipcountry")) {
+        return value.trim().toUpperCase();
+      }
+    }
+    return null;
+  }
+  __name(getCountryFromCookie, "getCountryFromCookie");
+  function getDomain() {
+    return window.location.hostname.replace("www.", "");
+  }
+  __name(getDomain, "getDomain");
+  function getDomainFromString(urlString) {
+    try {
+      const url = new URL(urlString);
+      return url.hostname.replace("www.", "");
+    } catch (error) {
+      return "Invalid URL";
+    }
+  }
+  __name(getDomainFromString, "getDomainFromString");
+  function getCookie(name) {
+    const cookies = document.cookie.split("; ");
+    for (const cookie of cookies) {
+      const [cookieName, cookieValue] = cookie.split("=");
+      if (cookieName === name) {
+        return decodeURIComponent(cookieValue);
+      }
+    }
+    return null;
+  }
+  __name(getCookie, "getCookie");
 
   // scripts/templates/services.js
   async function loadBannerData() {
     const paramToken = "2ade62ed-7a3c-4613-86ac-4f7543b8d43e";
+    const country = getCountryFromCookie();
     const accessToken = paramToken || document.currentScript.getAttribute("access-token");
     const response = await fetch(
-      `${CC_SERVER_URL}/banner/banner-token?access-token=${accessToken}`
+      `${CC_SERVER_URL}/banner/banner-token?access-token=${accessToken}${country ? `&countryCode=${country}` : ""}`
     );
     return await response.json();
   }
@@ -3308,9 +3348,7 @@
       const response = {
         tcString,
         tcfPolicyVersion: parseInt(tcfPolicyVersion),
-        // Use TCF policy version from GVL
         gdprApplies,
-        // Use proper GDPR detection
         cmpId: parseInt(model.cmpId),
         cmpVersion: parseInt(model.cmpVersion),
         consentScreen: parseInt(model.consentScreen),
@@ -3408,9 +3446,7 @@
       return {
         tcString,
         tcfPolicyVersion: parseInt(tcfPolicyVersion),
-        // Use TCF policy version from GVL
         gdprApplies,
-        // Use proper GDPR detection
         cmpId: parseInt(10),
         cmpVersion: parseInt(1),
         consentScreen: parseInt(0),
@@ -3454,21 +3490,17 @@
         const gdprApplies = getGDPRStatus();
         const response = {
           gdprApplies,
-          // Correct field name as per TCF specification
           cmpLoaded: cmpStatus !== "loading",
-          // Only true if we're past loading state
           cmpStatus,
           displayStatus: userHasInteracted ? "disabled" : "visible",
           apiVersion: parseInt(2),
           gvlVersion: parseInt(gvlInstance?.vendorListVersion || 0),
           tcfPolicyVersion: parseInt(gvlInstance?.tcfPolicyVersion || 2),
-          // Read from GVL instead of hardcoding
           cmpId: parseInt(10),
           cmpVersion: parseInt(1),
           cmpDisplayStatus: userHasInteracted ? "disabled" : "visible",
           cmpApiVersion: parseInt(2),
           cmpTcfPolicyVersion: parseInt(gvlInstance?.tcfPolicyVersion || 2),
-          // Read from GVL
           cmpGvlVersion: parseInt(gvlInstance?.vendorListVersion || 0)
         };
         logIfDev("\u{1F3D3} Ping response:", response);
@@ -4458,12 +4490,17 @@
   }
   __name(updateLabelState, "updateLabelState");
   async function handleDataLayerReporting(gtmData, dueDays) {
-    const data = await bannerTagTracking(gtmData);
-    const dataWithId = { ...gtmData, id: data.id };
+    const dataWithId = await handleDataManagerReporting(gtmData);
     addCookie("preference", JSON.stringify(dataWithId), dueDays);
-    setGTMDataLayer("captainComplianceConsent", dataWithId);
   }
   __name(handleDataLayerReporting, "handleDataLayerReporting");
+  async function handleDataManagerReporting(gtmData) {
+    const data = await bannerTagTracking(gtmData);
+    const dataWithId = { ...gtmData, id: data.id };
+    setGTMDataLayer("captainComplianceConsent", dataWithId);
+    return dataWithId;
+  }
+  __name(handleDataManagerReporting, "handleDataManagerReporting");
   function modalActions(cookieList, switchData, banner, configuration, shadowRoot, geoInfo, isGPCEnabled, scripts) {
     const { scannerId, id: bannerId } = banner;
     const redirectURL = configuration?.webLink || "https://captaincompliance.com/solutions/cookie-consent-manager/";
@@ -4526,7 +4563,7 @@
           shadowRoot,
           switchData,
           cookieList,
-          configuration?.callbackUrl
+          banner?.callbackUrl
         );
         const selectedCookies = switchData.reduce((accumulator, { key }) => {
           const checked = shadowRoot.getElementById(key)?.checked ?? false;
@@ -4547,7 +4584,7 @@
           notSellPersonalInfo: doNotSellPersonalInfoEnabled,
           selectedCookies,
           scripts,
-          callbackUrl: configuration?.callbackUrl || ""
+          callbackUrl: banner?.callbackUrl || ""
         };
         restoreScripts(selectedCookies);
         saveConsent(true);
@@ -4600,7 +4637,7 @@
         blockScripts(scripts, rejectedCookies);
         closeModal(shadowRoot, scannerId, configuration.dueDays, isGPCEnabled);
         updateStatus(bannerId, "REJECTED");
-        reject(mergeCookieList(cookieList), configuration?.callbackUrl);
+        reject(mergeCookieList(cookieList), banner?.callbackUrl);
         const gtmData = {
           status: "REJECTED",
           scannerId,
@@ -4609,7 +4646,7 @@
           notSellPersonalInfo: false,
           selectedCookies: rejectedCookies,
           scripts,
-          callbackUrl: configuration?.callbackUrl || ""
+          callbackUrl: banner?.callbackUrl || ""
         };
         if (overlay) {
           overlay.style.visibility = "hidden";
@@ -4760,30 +4797,6 @@
     return true;
   }
   __name(shouldDisplayBanner, "shouldDisplayBanner");
-  function getDomain() {
-    return window.location.hostname.replace("www.", "");
-  }
-  __name(getDomain, "getDomain");
-  function getDomainFromString(urlString) {
-    try {
-      const url = new URL(urlString);
-      return url.hostname.replace("www.", "");
-    } catch (error) {
-      return "Invalid URL";
-    }
-  }
-  __name(getDomainFromString, "getDomainFromString");
-  function getCookie(name) {
-    const cookies = document.cookie.split("; ");
-    for (const cookie of cookies) {
-      const [cookieName, cookieValue] = cookie.split("=");
-      if (cookieName === name) {
-        return decodeURIComponent(cookieValue);
-      }
-    }
-    return null;
-  }
-  __name(getCookie, "getCookie");
   function handleUserConsentPreferences() {
     const userPreferenceCookie = getCookie(`${CC_COOKIE_MODAL}_preference`);
     if (!userPreferenceCookie) return;
@@ -4849,7 +4862,8 @@
       report,
       geoInfo,
       bannerModeStyle,
-      scripts
+      scripts,
+      gtmConfiguration
     } = data;
     const geolocation = {
       country: geoInfo.country,
@@ -4860,9 +4874,27 @@
       timezone: geoInfo.timezone
     };
     window.__ccGeoInfo = geolocation;
+    const cookieRemoved = isCookieRemoved(
+      `${CC_COOKIE_MODAL}_${banner.scannerId}`
+    );
+    if (geolocation && geolocation.countryCode === "US" && cookieRemoved) {
+      handleDataManagerReporting({
+        status: banner.gtmStatus || "GTM_INIT_STATUS",
+        scannerId: banner.scannerId,
+        bannerId: banner.id,
+        geoInfo: geolocation,
+        notSellPersonalInfo: banner.doNotSell,
+        selectedCookies: gtmConfiguration.reduce((acc, item) => {
+          if (item.cookieType && item.cookieType.key) {
+            acc[item.cookieType.key] = item.enabled;
+          }
+          return acc;
+        }, {})
+      });
+    }
+    addCookie(CC_USER_LOCATION, JSON.stringify(geolocation), 3);
     const bannerReport = await loadData(banner.scannerId);
     if (bannerReport) {
-      console.log("renderModal", scripts);
       handleBlockScripts(scripts);
       const switchData = await loadSwitchData();
       const shadowRoot = generateHtmlModalNode();
@@ -4880,9 +4912,9 @@
           geoInfo: geolocation,
           selectedCookies: {
             STRICTLY_NECESSARY_COOKIES: true,
-            TARGETING_COOKIES: true,
-            FUNCTIONALITY_COOKIES: false,
-            PERFORMANCE_COOKIES: false,
+            TARGETING_COOKIES: false,
+            FUNCTIONALITY_COOKIES: true,
+            PERFORMANCE_COOKIES: true,
             UNCLASSIFIED_COOKIES: true
           }
         };

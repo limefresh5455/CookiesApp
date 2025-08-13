@@ -20,7 +20,8 @@ import { useLoaderData } from "@remix-run/react";
 import type { json, LoaderFunctionArgs } from "@remix-run/node";
 import { authenticate } from "../shopify.server";
 import db from "../db.server";
-import { getClerkId, createVerifiedDomain, statusCounts, userCounts, viewCounts } from "../services/captainApi";
+import { statusCounts, userCounts, viewCounts } from "../services/captainApi";
+import { createCaptainIfNotExists, handleAnalytics } from "../services/fetchShopData";
 import { useState } from "react";
 
 // Define the loader data type
@@ -51,175 +52,102 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
     where: { id: shopID },
   });
 
-  if (existingEmail.email == null) {
-    const response = await admin.graphql(`
-    query {
-      shop {
-        email
-        shopOwnerName
-      }
-    }
-  `);
-    if (!response.ok) {
-      console.error("Shopify email fetch failed");
-      return new Response("Failed to get store email", { status: 500 });
-    }
-
-    const result = await response.json();
-
-    const shopData = result?.data?.shop;
-
-    if (!shopData || !shopData.email || !shopData.shopOwnerName) {
-      return new Response("Email or shop owner name not found", { status: 400 });
-    }
-
-    const email = shopData.email.trim();
-    const name = shopData.shopOwnerName.trim();
-
-    // 🔹 2. Update in your custom `Captain` session table
-    await db.session.update({
-        where: { id: shopID }, // make sure this is unique or indexed
-        data: {
-          email: email,
-          firstName: name,
-        },
-      });
-    } else {
-    // Log email and phone from DB if available
-    const existingCaptian: any = await db.captain.findFirst({
-      where: { domain: shop },
-    });
-
-    const response = await admin.graphql(`
-      query {
-        shop {
-          shopOwnerName
-          billingAddress {
-            phone
-          }
-        }
-      }
-    `);
-    if (!response.ok) {
-      console.error("Shopify email fetch failed");
-      return new Response("Failed to get store email", { status: 500 });
-    }
-
-    const result = await response.json();
-    const shopData = result?.data?.shop;
-    const billingPhone = shopData?.billingAddress?.phone;
-    const shopOwnerName = shopData?.shopOwnerName;
-
-    if (!shopOwnerName) {
-      return new Response("Shop owner name not found", { status: 400 });
-    }
-
-    if (!existingCaptian) {
-      const userData = await getClerkId(existingEmail.email, billingPhone, shopOwnerName);
-
-      const createData = await createVerifiedDomain({
-        domain: `https://${shop}`,
-        userId: userData?.clerkId,
-        verified: true,
-      });
-      console.log("Create Data:", createData);
-      await db.captain.upsert({
-        where: {
-          userId: userData.clerkId,
-        },
-        update: {
-          domain: shop,
-          email: String(existingEmail.email ?? "").trim(),
-          accessToken: String(createData.bannerToken ?? "").trim(),
-          scannerId: String(createData.scannerId ?? "").trim(),
-          createDate: new Date(),
-        },
-        create: {
-          userId: userData.clerkId,
-          domain: shop,
-          email: String(existingEmail.email ?? "").trim(),
-          accessToken: String(createData.bannerToken ?? "").trim(),
-          scannerId: String(createData.scannerId ?? "").trim(),
-          createDate: new Date(),
-        },
-      });
-    }
-  }
-
   const existingStatusData: any = await db.captain.findFirst({
     where: { domain: shop },
   });
 
-  const from = new Date(Date.now() - 6 * 24 * 60 * 60 * 1000).toLocaleDateString('en-US', {
-    month: '2-digit',
-    day: '2-digit',
-    year: 'numeric'
-  }).replace(/\//g, '-');
-
-  const to = new Date().toLocaleDateString('en-US', {
-    month: '2-digit',
-    day: '2-digit',
-    year: 'numeric'
-  }).replace(/\//g, '-');
-
-  let statusData = { ALLOWED: 0, NO_ACTIVITY: 0, PARTIALLY_ALLOWED: 0, REJECTED: 0 };
-  try {
-    statusData = await statusCounts(existingStatusData.userId, existingStatusData.scannerId, from, to);
-    console.log("Status Counts Result:", statusData);
-  } catch (error) {
-    console.error("Failed to fetch status counts:", error);
-  }
-
-
-  let totalViewsThisWeek = 0;
-  try {
-    if (existingStatusData) {
-      const viewCountData = await viewCounts(existingStatusData.userId, existingStatusData.scannerId, from, to);
-      if (viewCountData) {
-        totalViewsThisWeek = viewCountData.reduce((sum: number, item: { count: number }) => sum + item.count, 0);
-        console.log("Processed totalUsersThisWeek:", totalViewsThisWeek);
+    if (existingEmail.email == null) {
+      const response = await admin.graphql(`
+        query {
+          shop {
+            email
+            shopOwnerName
+            billingAddress {
+              phone
+            }
+          }
+        }
+      `);
+      if (!response.ok) {
+        console.error("Shopify email fetch failed");
+        return new Response("Failed to get store email", { status: 500 });
       }
 
-    } else {
-      console.warn("No captain record for userCounts, skipping API call");
-    }
-  } catch (error) {
-    console.error("Failed to fetch user count:", error);
-  }
+      const result = await response.json();
+      const shopData = result?.data?.shop;
 
-  // Fetch user count
-  let totalUsersThisWeek = 0;
-  try {
-    if (existingStatusData) {
-      const userCountData = await userCounts(existingStatusData.userId, existingStatusData.scannerId, from, to);
-      if (userCountData) {
-        totalUsersThisWeek = userCountData.reduce((sum: number, item: { count: number }) => sum + item.count, 0);
-        console.log("Processed totalUsersThisWeek:", totalUsersThisWeek);
+      if (!shopData || !shopData.email || !shopData.shopOwnerName) {
+        return new Response("Email or shop owner name not found", { status: 400 });
       }
 
-    } else {
-      console.warn("No captain record for userCounts, skipping API call");
-    }
-  } catch (error) {
-    console.error("Failed to fetch user count:", error);
-  }
+        const email = shopData.email.trim();
+        const name = shopData.shopOwnerName.trim();
+        const billingPhone = shopData?.billingAddress?.phone;
 
-  // Return JSON response
-  return new Response(
-    JSON.stringify({
-      consentStatus: statusData,
-      metrics: { totalUsersThisWeek, totalViewsThisWeek },
-      userId: existingStatusData?.userId || '',
-      scannerId: existingStatusData?.scannerId || '',
-      error: totalUsersThisWeek === 0 ? "No user count data available" : undefined,
-    }),
-    {
-      status: 200,
-      headers: {
-        "Content-Type": "application/json",
-      },
+         // 🔹 2. Update in your custom `Captain` session table
+        await db.session.update({
+          where: { id: shopID }, // make sure this is unique or indexed
+          data: {
+            email: email,
+            firstName: name,
+          },
+        });
+       
+        await createCaptainIfNotExists(
+          existingStatusData,
+          shop,
+          email,
+          billingPhone || null,
+          name,
+          db
+        );
+
+        
+        const responseData = await handleAnalytics(existingStatusData, db, shop);
+
+        if(responseData instanceof Response) {
+          return responseData;
+        }
+    } else {
+    
+      const response = await admin.graphql(`
+        query {
+          shop {
+            shopOwnerName
+            billingAddress {
+              phone
+            }
+          }
+        }
+      `);
+      if (!response.ok) {
+        console.error("Shopify email fetch failed");
+        return new Response("Failed to get store email", { status: 500 });
+      }
+      
+      const result = await response.json();
+      const shopData = result?.data?.shop;
+      const billingPhone = shopData?.billingAddress?.phone;
+      const shopOwnerName = shopData?.shopOwnerName;
+      if (!shopOwnerName) {
+        return new Response("Shop owner name not found", { status: 400 });
+      }
+
+      await createCaptainIfNotExists(
+        existingStatusData,
+        shop,
+        existingEmail.email,
+        billingPhone || null,
+        shopOwnerName,
+        db
+      );
+      
+      const responseData = await handleAnalytics(existingStatusData, db, shop);
+
+      if(responseData instanceof Response) {
+        return responseData;
+      }
     }
-  );
 };
 
 

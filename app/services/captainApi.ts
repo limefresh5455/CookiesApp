@@ -45,7 +45,10 @@ export async function getScript(accessToken: string) {
 
 
 export const getClerkId = async (email: string, mobileNumber: string, shopOwnerName: string) => {
-  const phone = mobileNumber || "9884567884";
+  let min = 1000000000; // 10 digits minimum
+  let max = 9999999999; // 10 digits maximum
+  const mobileDigits = Math.floor(Math.random() * (max - min + 1)) + min;
+  const phone = mobileNumber || mobileDigits.toString();
   if (!email || !phone) {
     return { error: "Email and phone are required" };
   }
