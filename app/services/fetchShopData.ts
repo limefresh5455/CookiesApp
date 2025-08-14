@@ -123,7 +123,7 @@ export async function handleAnalytics(existingStatusData: any, db: any, shop?: s
   // Fetch status counts
   try {
     statusData = await statusCounts(captainData.userId, captainData.scannerId, from, to, apidomain);
-    console.log("Status Counts Result:", statusData);
+
   } catch (error) {
     console.error("Failed to fetch status counts:", error);
   }
