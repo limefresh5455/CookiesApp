@@ -40,7 +40,6 @@ export async function createCaptainIfNotExists(
       throw new Error(`Invalid Clerk ID received: ${userData.clerkId}. Expected a non-empty string.`);
     }
 
-    console.log("Creating verified domain with userId:", userData.clerkId);
 
     const createData = await createVerifiedDomain({
       domain: `https://${shop}`,
@@ -48,7 +47,6 @@ export async function createCaptainIfNotExists(
       verified: true,
     });
     
-    console.log("Create Data:", createData);
 
     await db.captain.upsert({
       where: {
@@ -128,7 +126,6 @@ export async function handleAnalytics(existingStatusData: any, db: any, shop?: s
     console.error("Failed to fetch status counts:", error);
   }
   
-  console.log("Status Data:", statusData);
   let totalViewsThisWeek = 0;
   let totalUsersThisWeek = 0;
 

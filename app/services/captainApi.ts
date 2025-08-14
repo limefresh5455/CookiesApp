@@ -14,21 +14,14 @@ interface DomainData {
   verified?: boolean;
 }
 
-interface statusCheckResponse {
-  ALLOWED: number;
-  NO_ACTIVITY: number;
-  PARTIALLY_ALLOWED: number;
-  REJECTED: number;
-  count: number;
-}
-const appdomain = import.meta.env.VITE_API_URL;
+const appdomain = process.env.CLERK_SECRET_KEY;
 
 export async function getScript(accessToken: string) {
   if (!accessToken) {
     throw new Response("Access token is required", { status: 400 });
   }
 
-  const response = await fetch(`${process.env.VITE_API_URL}/banner/script?accessToken=${accessToken}`, {
+  const response = await fetch(`${appdomain}/banner/script?accessToken=${accessToken}`, {
     method: "GET",
     headers: {
       accept: "application/json",
