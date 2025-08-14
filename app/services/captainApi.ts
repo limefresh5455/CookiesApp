@@ -14,7 +14,7 @@ interface DomainData {
   verified?: boolean;
 }
 
-const appdomain = process.env.CLERK_SECRET_KEY;
+const appdomain = process.env.CLERK_API_URL;
 
 export async function getScript(accessToken: string) {
   if (!accessToken) {
