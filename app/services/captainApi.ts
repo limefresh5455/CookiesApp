@@ -151,9 +151,9 @@ export async function viewCounts(userId: string, scannerId: string, from: string
 
 
 export async function statusCounts(userId: string, scannerId: string, from: string, to: string){
-  const apiUrl = `${appdomain}/bannerTracking/statusCounts?from=${from}&to=${to}&scannerId=${scannerId}&userId=${userId}`;
-  
   try {
+    const apiUrl = `${appdomain}/bannerTracking/statusCounts?from=${from}&to=${to}&scannerId=${scannerId}&userId=${userId}`;
+    console.log("viewCounts API URL:", apiUrl); // Debug
     const response = await fetch(apiUrl);
     if (!response.ok) {
       throw new Error("Failed to fetch banner status");
