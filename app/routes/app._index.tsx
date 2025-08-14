@@ -39,6 +39,9 @@ interface LoaderData {
   userId: string;
   scannerId: string;
   error?: string;
+  ENV: {
+    API_URL: string;
+  };
 }
 
 
@@ -152,7 +155,7 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
 
 
 export default function DashboardPage() {
-  const { consentStatus, metrics, userId, scannerId } = useLoaderData<LoaderData>();
+  const { consentStatus, metrics, userId, scannerId, ENV } = useLoaderData<LoaderData>();
   const [selectedRange, setSelectedRange] = useState('week');
   const [results, setResults] = useState<{
     start: string;

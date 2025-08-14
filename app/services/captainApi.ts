@@ -158,11 +158,8 @@ export async function viewCounts(userId: string, scannerId: string, from: string
 }
 
 
-export async function statusCounts(userId: string, scannerId: string, from: string, to: string){
-   const apiDomain =
-    typeof window === "undefined"
-      ? process.env.API_URL
-      : import.meta.env.VITE_API_URL;
+export async function statusCounts(userId: string, scannerId: string, from: string, to: string, apiDomain = process.env.API_URL) {
+
   try {
     const apiUrl = `${apiDomain}/bannerTracking/statusCounts?from=${from}&to=${to}&scannerId=${scannerId}&userId=${userId}`;
     console.log("viewCounts API URL:", apiUrl); // Debug
