@@ -14,7 +14,11 @@ interface DomainData {
   verified?: boolean;
 }
 
-const appdomain = process.env.VITE_API_URL;
+const appdomain =
+  typeof window === "undefined"
+    ? process.env.VITE_API_URL
+    : import.meta.env.VITE_API_URL;
+
 
 export async function getScript(accessToken: string) {
   if (!accessToken) {
@@ -152,7 +156,7 @@ export async function viewCounts(userId: string, scannerId: string, from: string
 
 export async function statusCounts(userId: string, scannerId: string, from: string, to: string){
   try {
-    const apiUrl = `${process.env.VITE_API_URL}/bannerTracking/statusCounts?from=${from}&to=${to}&scannerId=${scannerId}&userId=${userId}`;
+    const apiUrl = `${appdomain}/bannerTracking/statusCounts?from=${from}&to=${to}&scannerId=${scannerId}&userId=${userId}`;
     console.log("viewCounts API URL:", apiUrl); // Debug
     const response = await fetch(apiUrl);
     if (!response.ok) {
