@@ -39,11 +39,9 @@ interface LoaderData {
   userId: string;
   scannerId: string;
   error?: string;
-  ENV: {
-    API_URL: string;
-  };
+  apidomain: string;
 }
-
+  
 
 
 export const loader = async ({ request }: LoaderFunctionArgs) => {
@@ -155,7 +153,7 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
 
 
 export default function DashboardPage() {
-  const { consentStatus, metrics, userId, scannerId, ENV } = useLoaderData<LoaderData>();
+  const { consentStatus, metrics, userId, scannerId, apidomain } = useLoaderData<LoaderData>();
   const [selectedRange, setSelectedRange] = useState('week');
   const [results, setResults] = useState<{
     start: string;
@@ -244,9 +242,9 @@ export default function DashboardPage() {
     if (!result || !userId || !scannerId) return;
     try {
 
-      const statusData = await statusCounts(userId, scannerId, result.start, result.end);
-      const userCountData = await userCounts(userId, scannerId, result.start, result.end);
-      const viewCountData = await viewCounts(userId, scannerId, result.start, result.end);
+      const statusData = await statusCounts(userId, scannerId, result.start, result.end, apidomain);
+      const userCountData = await userCounts(userId, scannerId, result.start, result.end, apidomain);
+      const viewCountData = await viewCounts(userId, scannerId, result.start, result.end, apidomain);
 
       const totalUsersThisWeek = userCountData?.reduce((sum: number, item: { count: number }) => sum + item.count, 0) || 0;
       const totalViewsThisWeek = viewCountData?.reduce((sum: number, item: { count: number }) => sum + item.count, 0) || 0;

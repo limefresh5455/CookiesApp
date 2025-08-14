@@ -73,6 +73,8 @@ export async function createCaptainIfNotExists(
 
 
 export async function handleAnalytics(existingStatusData: any, db: any, shop?: string): Promise<Response> {
+  const apidomain: string = process.env.API_URL ?? "";
+
   // Generate date range (last 6 days to today)
   const from = new Date(Date.now() - 6 * 24 * 60 * 60 * 1000).toLocaleDateString('en-US', {
     month: '2-digit',
@@ -120,7 +122,7 @@ export async function handleAnalytics(existingStatusData: any, db: any, shop?: s
 
   // Fetch status counts
   try {
-    statusData = await statusCounts(captainData.userId, captainData.scannerId, from, to);
+    statusData = await statusCounts(captainData.userId, captainData.scannerId, from, to, apidomain);
     console.log("Status Counts Result:", statusData);
   } catch (error) {
     console.error("Failed to fetch status counts:", error);
@@ -132,7 +134,7 @@ export async function handleAnalytics(existingStatusData: any, db: any, shop?: s
   // Fetch view and user counts
   try {
     // Fetch view counts
-    const viewCountData = await viewCounts(captainData.userId, captainData.scannerId, from, to);
+    const viewCountData = await viewCounts(captainData.userId, captainData.scannerId, from, to, apidomain);
     if (viewCountData && Array.isArray(viewCountData)) {
       totalViewsThisWeek = viewCountData.reduce((sum: number, item: { count: number }) => sum + item.count, 0);
       console.log("Processed totalViewsThisWeek:", totalViewsThisWeek);
@@ -143,7 +145,7 @@ export async function handleAnalytics(existingStatusData: any, db: any, shop?: s
 
   try {
     // Fetch user counts
-    const userCountData = await userCounts(captainData.userId, captainData.scannerId, from, to);
+    const userCountData = await userCounts(captainData.userId, captainData.scannerId, from, to, apidomain);
     if (userCountData && Array.isArray(userCountData)) {
       totalUsersThisWeek = userCountData.reduce((sum: number, item: { count: number }) => sum + item.count, 0);
       console.log("Processed totalUsersThisWeek:", totalUsersThisWeek);
@@ -159,6 +161,7 @@ export async function handleAnalytics(existingStatusData: any, db: any, shop?: s
       metrics: { totalUsersThisWeek, totalViewsThisWeek },
       userId: captainData.userId,
       scannerId: captainData.scannerId,
+      apidomain: apidomain,
       error: totalUsersThisWeek === 0 ? "No user count data available" : undefined,
     }),
     {
