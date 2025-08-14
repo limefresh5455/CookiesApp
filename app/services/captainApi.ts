@@ -14,11 +14,7 @@ interface DomainData {
   verified?: boolean;
 }
 
-const appdomain =
-  typeof window === "undefined"
-    ? process.env.API_URL
-    : import.meta.env.VITE_API_URL;
-
+const appdomain = process.env.VITE_API_URL;
 
 export async function getScript(accessToken: string) {
   if (!accessToken) {
@@ -109,8 +105,12 @@ export const getClerkId = async (email: string, mobileNumber: string, shopOwnerN
 };
 
 export async function userCounts(userId: string, scannerId: string, from: string, to: string) {
+  const apiDomain =
+    typeof window === "undefined"
+      ? process.env.API_URL
+      : import.meta.env.VITE_API_URL;
   try {
-    const url = `${appdomain}/bannerTracking/userCount?from=${from}&to=${to}&scannerId=${scannerId}&userId=${userId}`;
+    const url = `${apiDomain}/bannerTracking/userCount?from=${from}&to=${to}&scannerId=${scannerId}&userId=${userId}`;
     console.log("userCounts API URL:", url); // Debug
     const response = await fetch(url, {
       method: "GET",
@@ -131,8 +131,12 @@ export async function userCounts(userId: string, scannerId: string, from: string
   }
 }
 export async function viewCounts(userId: string, scannerId: string, from: string, to: string) {
+    const apiDomain =
+    typeof window === "undefined"
+      ? process.env.API_URL
+      : import.meta.env.VITE_API_URL;
   try {
-    const url = `${appdomain}/bannerTracking/count?from=${from}&to=${to}&scannerId=${scannerId}&userId=${userId}`;
+    const url = `${apiDomain}/bannerTracking/count?from=${from}&to=${to}&scannerId=${scannerId}&userId=${userId}`;
     console.log("viewCounts API URL:", url); // Debug
     const response = await fetch(url, {
       method: "GET",
@@ -155,8 +159,12 @@ export async function viewCounts(userId: string, scannerId: string, from: string
 
 
 export async function statusCounts(userId: string, scannerId: string, from: string, to: string){
+   const apiDomain =
+    typeof window === "undefined"
+      ? process.env.API_URL
+      : import.meta.env.VITE_API_URL;
   try {
-    const apiUrl = `${appdomain}/bannerTracking/statusCounts?from=${from}&to=${to}&scannerId=${scannerId}&userId=${userId}`;
+    const apiUrl = `${apiDomain}/bannerTracking/statusCounts?from=${from}&to=${to}&scannerId=${scannerId}&userId=${userId}`;
     console.log("viewCounts API URL:", apiUrl); // Debug
     const response = await fetch(apiUrl);
     if (!response.ok) {
